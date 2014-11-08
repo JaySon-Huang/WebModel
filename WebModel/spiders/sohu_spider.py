@@ -2,11 +2,10 @@
 
 from scrapy.contrib.spiders import CrawlSpider, Rule
 from scrapy.contrib.linkextractors import LinkExtractor
+from scrapy import log
 
 # from bs4 import BeautifulSoup
-
 from WebModel.items import PageItem
-
 
 class SohuSpider(CrawlSpider):
 	name = 'sohu'
@@ -24,8 +23,14 @@ class SohuSpider(CrawlSpider):
 		item['name'] = response.xpath('/html/head/meta[@name="keywords"]/@content').extract()[0]
 		item['links'] = []
 		for link in response.xpath('//a/@href').extract() :
-			item['links'].append(link)
-		print(repr(item).decode("unicode-escape") + '\n')
+			if link.startswith('http://'):
+				item['links'].append(link)
+			else :
+				msg = '%s : not a url'%(link,)
+				log.msg(msg, level=log.DEBUG, spider=self)
+		msg = 'crwal %4d urls in %s'%(len(item['links']), item['url'])
+		log.msg(msg, level=log.INFO, spider=self)
+		# log.msg(repr(item).decode("unicode-escape") + '\n', level=log.INFO, spider=self)
 		# soup = BeautifulSoup(response.body)
 
 		return item
