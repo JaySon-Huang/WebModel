@@ -14,7 +14,12 @@ class RobotsHandler(object):
 		self.parseTXT()
 
 	def parseTXT(self):
-		r = requests.get(self.domain+'/robots.txt')
+		# 不允许自动跳转
+		r = requests.get(self.domain+'/robots.txt', allow_redirects=False)
+		# 状态号非200表示获取失败,没有robots.txt文件
+		if r.status_code != 200:
+			return
+
 		cur_ua = None
 		disallows = []
 		for line in r.text.split('\n'):
@@ -22,15 +27,7 @@ class RobotsHandler(object):
 			extract = RobotsHandler.regex_useragent.match(line)
 			if extract :
 				cur_ua = extract.group(1).strip()
-				# print 'Current User-agent:',cur_ua
 				continue
-
-			# extract = RobotsHandler.regex_allow.match(line)
-			# if extract and cur_ua == '*':
-			# 	allow = extract.group(1).strip()
-			# 	self.rules['allow'].append(allow)
-			# 	print 'New allow rule:',allow
-			# 	continue
 
 			extract = RobotsHandler.regex_disallow.match(line)
 			if extract and cur_ua == '*':
@@ -52,6 +49,7 @@ class RobotsHandler(object):
 		根据self.domain域名根目录下robots.txt定义的规则,对url列表进行过滤
 
 		@links url列表
+		@META  为抓取单个网页的robots META标签留空位
 		@return 以字典形式返回.
 		        'allows'为links中允许的url列表
 		        'disallows'中每一项为links中被规则过滤的url,与过滤此url的规则
@@ -60,11 +58,17 @@ class RobotsHandler(object):
 			'allows':[],
 			'disallows':[],
 		}
+		# 域名下没有robots.txt禁止的内容
+		if not self.disallows:
+			ret['allows'] = links
+			return ret
+
+		# 有robots.txt禁止的内容,对url进行过滤
 		for link in links :
 			isAllow = True
 			for rule in self.disallows :
 				m = rule.match(link)
-				if m : # 其中一条robots规则禁止此条url的抓取
+				if m : # 其中一条robots规则符合此条url
 					isAllow = False
 					ret['disallows'].append((link, rule.pattern))
 					break
