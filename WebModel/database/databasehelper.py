@@ -1,11 +1,14 @@
 # -*- coding: utf-8 -*-
 import sqlite3
+from WebModel.items import PageItem
 
 VERBOSE = 1
 
 CTABLE_DOMAIN = '''
 CREATE TABLE IF NOT EXISTS Domains(
  did INTEGER PRIMARY KEY AUTOINCREMENT,
+ indegree INTEGER,
+ outdegree INTEGER,
  domain VARCHAR(64)
 )'''
 
@@ -15,8 +18,6 @@ CREATE TABLE IF NOT EXISTS Websites(
  did INTEGER,
  url VARCHAR(256) NOT NULL,
  title VARCHAR(100),
- indegree INTEGER,
- outdegree INTEGER,
  visited bit,
  FOREIGN KEY (did) REFERENCES Domains(did)
 )'''
@@ -61,7 +62,14 @@ class DatabaseHelper(object):
 			print 'Database connection CLOSE.'
 		self.conn.close()
 
-	def insert_ruleset(self, ruleset, domain):
+	def insertDomain(self, domain):
+		'''增加一个域名'''
+		cur = self.conn.cursor()
+		cur.execute("INSERT INTO Domains VALUES (NULL,?)", (domain,))
+		# 写入到文件中
+		self.conn.commit()
+
+	def insertRuleset(self, ruleset, domain):
 		'''增加一个robots.txt规则集'''
 		cur = self.conn.cursor()
 		cur.execute("SELECT did FROM Domains WHERE domain=?", (domain,))
@@ -69,18 +77,20 @@ class DatabaseHelper(object):
 		cur.execute("INSERT INTO Rulesets VALUES (NULL,?,?)",(did,ruleset))
 		# 写入到文件
 		self.conn.commit()
-
-
-	def insert_website(self):
-		'''增加一个网页'''
+	
+	def insertWebsite(self, url):
+		'''增加一个网页,标记为未访问'''
 		pass
 
-	def insert_domain(self, domain):
-		'''增加一个域名'''
-		cur = self.conn.cursor()
-		cur.execute("INSERT INTO Domains VALUES (NULL,?)", (domain,))
-		# 写入到文件中
-		self.conn.commit()
+	def updateInfo(self, item):
+		'''爬虫爬完之后对数据库内容进行更新'''
+		# website记录更新
+		# 对应的domain记录中入度出度也需要更新
+		pass
+
+	def addDomainIndegree(self, url, numToAdd):
+		''''''
+		pass
 
 	def robotsrulesetOfDomain(self, domain):
 		'''检查domain是否在数据库中,
@@ -99,10 +109,11 @@ class DatabaseHelper(object):
 			,(domain,) )
 		print cur.fetchone()
 
+dbcli = DatabaseHelper()
 
 if __name__ == '__main__':
-	dbhelper = DatabaseHelper()
-	# dbhelper.insert_domain('jaysonhwang.com')
-	# dbhelper.insert_ruleset('test','jaysonhwang.com')
-	dbhelper.robotsrulesetOfDomain('jaysonhwang.com')
-	dbhelper.close()
+	dbcli = DatabaseHelper()
+	# dbcli.insert_domain('jaysonhwang.com')
+	# dbcli.insert_ruleset('test','jaysonhwang.com')
+	dbcli.robotsrulesetOfDomain('jaysonhwang.com')
+	dbcli.close()

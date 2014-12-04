@@ -9,13 +9,11 @@ from scrapy import log, Request
 from urlparse import urlparse
 
 # 自定义的库
-from WebModel.items import PageItem
+from WebModel.items import PageItem, RulesetItem
 # [robots.txt解析库(进行过修改)](http://nikitathespider.com/python/rerp/)
 from WebModel.utils.robotexclusionrulesparser import RobotExclusionRulesParser as RobotsParser
 # [域名解析库](https://pypi.python.org/pypi/publicsuffix/)
 from WebModel.utils.publicsuffix import PublicSuffixList
-# [bloomfilter库,用以查重]()
-from pybloom import BloomFilter
 
 class SohuSpider(CrawlSpider):
 	name = 'jayson'
@@ -29,10 +27,8 @@ class SohuSpider(CrawlSpider):
 	def __init__(self):
 		CrawlSpider.__init__(self)
 		# 用来解析robots.txt
-		self.robotsparser = RobotsParser()
 		# 用来解析url获取域名
 		self.domaingetter = PublicSuffixList()
-		self.bloom_vec = BloomFilter(capacity=10000, error_rate=0.001)
 
 	def parse(self, response):
 		item = PageItem()
@@ -41,13 +37,10 @@ class SohuSpider(CrawlSpider):
 			'appeared':0,
 			'js':0,
 		}
-
-		# 解析url,获取域名
-		netloc = urlparse(response.url).netloc
-		domain = self.domaingetter.get_public_suffix(netloc)
-
-		# 检查这个域名是否在数据库中
-
+		# 判断url是否被robots.txt内规则允许
+		robotsparser, rulesetItem = self.getRuleset(response)
+		# 把rulesetItem送到pipeline
+		yield rulesetItem
 
 		# 使用xpath获取内容
 		item['url'] = response.url
@@ -56,22 +49,12 @@ class SohuSpider(CrawlSpider):
 		for link in response.xpath('//a/@href').extract() :
 			# 判断超链接内容是否为一个合法网址/相对网址
 			if link.startswith('http://') :
-				# bloomfilter判定未出现过
-				if not self.bloom_vec.add(link) :
-					item['links'].append(link)
-					cnt['new'] += 1
-					yield Request(link, callback=self.parse)
-				else :
-					cnt['appeared'] += 1
-					# self.log('%s have appeared in early time'%(link,), level=log.DEBUG)
+				# yield Request(link, callback=self.parse)
+				pass
 			elif link.startswith('/') :
-				link = 'http://jaysonhwang.com'+link
-				if not self.bloom_vec.add(link) :
-					item['links'].append(link)
-					cnt['new'] += 1
-					# yield Request(link, callback=self.parse)
-				else :
-					cnt['appeared'] += 1
+				# 把网址补全,再yield请求
+				# yield Request(link, callback=self.parse)
+				pass
 			else :
 				msg = '%s : not a url'%(link,)
 				# self.log(msg, level=log.DEBUG)
@@ -81,3 +64,24 @@ class SohuSpider(CrawlSpider):
 		# log.msg(repr(item).decode("unicode-escape") + '\n', level=log.INFO, spider=self)
 
 		yield item
+
+	def getRuleset(self, response):
+		robotsparser = RobotsParser()
+
+		rulesetItem = RulesetItem
+		# 解析url,获取域名
+		netloc = urlparse(response.url).netloc
+		domain = self.domaingetter.get_public_suffix(netloc)
+		# 检查这个域名是否在数据库中
+		exist, ruleset = dbcli.robotsrulesetOfDomain(domain)
+		if not exist:
+			# 从网络读取robots.txt文件
+			#ruleset = ''
+			pass
+		else :
+			# 重新解析robots.txt
+			pass
+		rulesetItem['domain'] = domain
+		rulesetItem['ruleset'] = ruleset
+
+		return (robotsparser, rulesetItem)
