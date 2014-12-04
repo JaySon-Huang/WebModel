@@ -20,4 +20,6 @@ class RulesetItem(scrapy.Item):
 	# 对应的domain
 	domain = scrapy.Field()
 	# ruleset内容
-	ruleset = scrapy.Field()	
+	ruleset = scrapy.Field()
+	# 是否需要更新
+	update = scrapy.Field()

@@ -22,10 +22,16 @@ WebModel
 	3. 尝试使用分布式爬取(利用小组成员的机器形成小集群)
 
 ## 环境
-Python 2.7.x 
-Scrapy   - 网络爬虫框架
-Requests - 网络通讯解析包
-
+* [Python 2.7.x](python.org)  
+* [Scrapy - 网络爬虫框架](scrapy.org)  
+* Scrapy依赖库: [Twisted, six, w3lib, queuelib, lxml, pyOpenSSL, cssselect ]  
+* Twisted依赖库: [zope.interface]  
+* [pybloom - bloom filter的python实现](https://github.com/jaybaird/python-bloomfilter/)  
+* pybloom依赖库: [bitarray](https://pypi.python.org/pypi/bitarray/)  
+* [publicsuffix - 获取域名](https://pypi.python.org/pypi/publicsuffix/)  
+* [robotexclusionrulesparser - 解析robots.txt](http://nikitathespider.com/python/rerp/)  
+* [Redis - 作为分布式队列](http://www.redis.io/)  
+* Scrapy 和 Redis 的融合[scrapy-redis](https://github.com/darkrho/scrapy-redis)  
 ## 参考文献
 1. 闫宏飞，李晓明，关于中国Web 的大小、形状和结构，计算机研究和发展，2002，39（8）：958~967
 2. 中国互联网络信息中心（CNNIC）[第34次中国互联网络发展状况统计报告](url:http://www.cnnic.net.cn/hlwfzyj/hlwxzbg/hlwtjbg/201407/P020140721507223212132.pdf)，2014年07月21日，

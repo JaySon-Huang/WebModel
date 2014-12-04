@@ -5,13 +5,20 @@
 # Don't forget to add your pipeline to the ITEM_PIPELINES setting
 # See: http://doc.scrapy.org/en/latest/topics/item-pipeline.html
 
+#python库
 import sqlite3
+# [url解析函数 urlparse](https://docs.python.org/2/library/urlparse.html)
+from urlparse import urlparse
+from scrapy import log
 
-
-# [bloomfilter库,用以查重]()
-from pybloom import BloomFilter
-# 
-from WebModel.database.databasehelper import dbcli
+#自定义的库
+from WebModel.items import PageItem, RulesetItem
+# 数据库操作 
+from WebModel.database.databasehelper import getCliInstance
+# [bloomfilter库,用以查重](https://github.com/jaybaird/python-bloomfilter/)
+from WebModel.utils.pybloom import BloomFilter
+# [域名解析库](https://pypi.python.org/pypi/publicsuffix/)
+from WebModel.utils.publicsuffix import PublicSuffixList
 
 class WebModelPipeline(object):
 
@@ -19,26 +26,31 @@ class WebModelPipeline(object):
 		# 用来判断是否重复出现
 		self.bloom_vec = BloomFilter(capacity=10000, error_rate=0.001)
 
-
 	def process_item(self, item, spider):
-		# 新域名,建立域名记录
-		dbcli.insertDomain(domain)
-		# 把robots.txt内容存储进数据库
-		dbcli.insertRuleset(ruleset, domain)
-		# bloomfilter判定未出现过
-		if not self.bloom_vec.add(link) :
-			item['links'].append(link)
-			cnt['new'] += 1
-			dbcli.insertWebsite(link)
-		else :
-			cnt['appeared'] += 1
-			# self.log('%s have appeared in early time'%(link,), level=log.DEBUG)
-		# 对于Website中已经有记录的，增加其入度
-		# 存储Website中未记录的网址，根据urls算出其出度\
-		# 建立与Rule
-		return item
+		if isinstance(item, RulesetItem):
+			if item['update']:
+				# 新域名,建立域名记录
+				self.dbcli.insertDomain(item['domain'])
+				spider.log("Spot New Domain:"+item['domain'], level=log.INFO)
+
+				# 把robots.txt内容存储进数据库
+				if item['ruleset']:
+					self.dbcli.insertRuleset(item['ruleset'], item['domain'])
+					spider.log("Insert Ruleset to Domain:"+item['domain'], level=log.INFO)
+		elif isinstance(item, PageItem):
+			newlinks, oldlinks = [], []
+			domain_getter = PublicSuffixList()
+			for link in item['links']:
+				domain = domain_getter.get_public_suffix(urlparse(link).netloc)
+				if not self.bloom_vec.add(link) :
+					# 返回False,bloomfilter判定未出现过
+					newlinks.append( (link, domain) )
+				else :
+					# 返回True,bloomfilter判定已经出现过
+					# 对于Website中已经有记录的，增加其入度
+					oldlinks.append( (link, domain) )
+			getCliInstance().updateInfo(item, newlinks, oldlinks)
 
 	def __del__(self):
-		self.cx.commit()
-		self.cx.close()
+		getCliInstance().close()
 

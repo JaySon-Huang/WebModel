@@ -12,7 +12,9 @@ BOT_NAME = 'WebModel'
 
 SPIDER_MODULES = ['WebModel.spiders']
 NEWSPIDER_MODULE = 'WebModel.spiders'
-
+ITEM_PIPELINES = {
+	'WebModel.pipelines.WebModelPipeline': 200,
+}
 # Crawl responsibly by identifying yourself (and your website) on the user-agent
 #USER_AGENT = 'WebModel (+http://www.yourdomain.com)'
 

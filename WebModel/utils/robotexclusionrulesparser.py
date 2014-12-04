@@ -467,7 +467,6 @@ class RobotExclusionRulesParser(object):
                 error_instance = error_instance[1]
             if hasattr(error_instance, "code"):
                 self._response_code = error_instance.code
-            print 'timeout'
             if VERBOSE:
                 print 'Code:%d\nConnect to %s timeout.'%(self._response_code, url)
                 
@@ -707,7 +706,10 @@ class RobotExclusionRulesParser(object):
 
     def __unicode__(self):
         if self._sitemaps:
-            s = "Sitemaps: %s\n\n" % self._sitemaps
+            s = ""
+            for sitemap in self._sitemaps:
+                s += "Sitemaps: %s\n" % sitemap
+            s += "\n"
         else: 
             s = ""
         if PY_MAJOR_VERSION < 3:
