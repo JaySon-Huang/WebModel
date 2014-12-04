@@ -65,7 +65,7 @@ class DatabaseHelper(object):
 	def insertDomain(self, domain):
 		'''增加一个域名'''
 		cur = self.conn.cursor()
-		cur.execute("INSERT INTO Domains VALUES (NULL,?)", (domain,))
+		cur.execute("INSERT INTO Domains VALUES (NULL,0,0,?)", (domain,))
 		# 写入到文件中
 		self.conn.commit()
 
@@ -74,21 +74,38 @@ class DatabaseHelper(object):
 		cur = self.conn.cursor()
 		cur.execute("SELECT did FROM Domains WHERE domain=?", (domain,))
 		did = cur.fetchone()[0]
-		cur.execute("INSERT INTO Rulesets VALUES (NULL,?,?)",(did,ruleset))
+		cur.execute("INitemSERT INTO Rulesets VALUES (NULL,?,?)",(did,ruleset))
 		# 写入到文件
 		self.conn.commit()
 	
 	def insertWebsite(self, url):
+                cur = self.conn.cursor()
+                cur.execute("SELECT did FROM Domains WHERE domain=?", (domain,))
+                did = cur.fetchone()[0]
+                cur.execute("INSERT INTO Websites VALUES (NULL,?,?,NULL,0)", (did,url,))
+                # 写入到文件
+		self.conn.commit()
 		'''增加一个网页,标记为未访问'''
 		pass
 
 	def updateInfo(self, item):
-		'''爬虫爬完之后对数据库内容进行更新'''
+                '''爬虫爬完之后对数据库内容进行更新'''
+                cur = self.conn.cursor()
+                cur.execute("SELECT wid,did FROM Websites WHERE url=?", (item.url,))
+                wid,did = cur.fetchone()
 		# website记录更新
+		cur.execute("UPDATE Websites SET title=?,visited=1 WHERE wid=?", (item.title,wid,))
 		# 对应的domain记录中入度出度也需要更新
+		cur.execute("UPDATE Domains SET outdegree=outdegree+? WHERE did=?",(len(item.links),did,))
+		# 写入到文件
+		self.conn.commit()
 		pass
 
 	def addDomainIndegree(self, url, numToAdd):
+                cur = self.conn.cursor()
+                cur.execute("SELECT did FROM Websites WHERE url=?", (item.url,))
+                did = cur.fetchone()[0]
+                cur.execute("UPDATE Domains SET outdegree=outdegree+? WHERE did=?",(numToAdd,did,))
 		''''''
 		pass
 
