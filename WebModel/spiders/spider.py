@@ -17,16 +17,16 @@ from WebModel.utils.publicsuffix import PublicSuffixList
 # 数据库操作 
 from WebModel.database.databasehelper import getCliInstance
 # scrapy-redis库
-from WebModel.utils.scrapy_redis.spiders import RedisMixin, RedisSpider
+from WebModel.utils.scrapy_redis.spiders import RedisSpider
+# 爬虫从redis的 `url_queue_key`、`domains_key` 键中获取需要爬取的url
+from WebModel.utils.rediskeys import url_queue_key, domains_key
 
 class WebModelSpider(RedisSpider):
 
 	name = 'webmodel'
-	# 爬虫从redis的`redis_key`键中获取需要爬取的url
-	redis_key = 'WebModel:urls_to_visit'
 
 	# allowed_domains = []
-	start_urls = ['http://www.qq.com',]
+	# start_urls = ['http://www.qq.com',]
 
 	def __init__(self):
 		super(WebModelSpider, self).__init__()
@@ -64,7 +64,9 @@ class WebModelSpider(RedisSpider):
 				# robots判定
 				if not robotsparser or robotsparser.is_allowed('*', link):
 					pageItem['links'].append(link)
-					yield Request(link, callback=self.parse)
+
+					# yield Request(link, callback=self.parse)
+			
 			elif link.startswith('/') :
 				# 相对定位,把网址补全,再yield请求
 				link = "http://"+ netloc + link
@@ -72,7 +74,8 @@ class WebModelSpider(RedisSpider):
 				# robots判定
 				if not robotsparser or robotsparser.is_allowed('*', link) :
 					pageItem['links'].append(link)
-					yield Request(link, callback=self.parse)
+
+					# yield Request(link, callback=self.parse)
 			else :
 				# 不符合以上两种,一般为javascript函数
 				# msg = '%s : not a url'%(link,)
@@ -91,7 +94,11 @@ class WebModelSpider(RedisSpider):
 		rulesetItem = RulesetItem()
 
 		# 检查这个域名是否在数据库中
-		exist, ruleset = getCliInstance().robotsrulesetOfDomain(domain)
+		#redis
+		exist = self.server.exists(domains_key+':'+domain)
+		ruleset = self.server.hget(domains_key+':'+domain, 'ruleset')
+		#sqlite3
+		# exist, ruleset = getCliInstance().robotsrulesetOfDomain(domain)
 		if not exist:
 			# 从网络读取robots.txt文件
 			robotsURL = "http://www."+domain+"/robots.txt"

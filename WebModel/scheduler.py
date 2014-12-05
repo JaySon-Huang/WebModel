@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 from scrapy import log
 import WebModel.utils.scrapy_redis.connection as connection
 
@@ -9,6 +10,7 @@ from WebModel.utils.scrapy_redis.dupefilter import RFPDupeFilter
 QUEUE_CLASS = 'scrapy_redis.queue.SpiderPriorityQueue'
 SCHEDULER_PERSIST = False
 IDLE_BEFORE_CLOSE = 0
+DUPEFILTER_KEY = '%(spider)s:dupefilter'
 
 QUEUE_KEY = '%(spider)s:requests'
 

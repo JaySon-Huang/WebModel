@@ -31,7 +31,9 @@ WebModel
 * [publicsuffix - 获取域名](https://pypi.python.org/pypi/publicsuffix/)  
 * [robotexclusionrulesparser - 解析robots.txt](http://nikitathespider.com/python/rerp/)  
 * [Redis - 作为分布式队列](http://www.redis.io/)  
-* Scrapy 和 Redis 的融合[scrapy-redis](https://github.com/darkrho/scrapy-redis)  
+* Scrapy 和 Redis 的融合[scrapy-redis](https://github.com/darkrho/scrapy-redis)(对新版的Scrapy适配做了调整)  
+* python操作Redis数据库: [redis-py](https://github.com/andymccurdy/redis-py)  
+
 ## 参考文献
 1. 闫宏飞，李晓明，关于中国Web 的大小、形状和结构，计算机研究和发展，2002，39（8）：958~967
 2. 中国互联网络信息中心（CNNIC）[第34次中国互联网络发展状况统计报告](url:http://www.cnnic.net.cn/hlwfzyj/hlwxzbg/hlwtjbg/201407/P020140721507223212132.pdf)，2014年07月21日，

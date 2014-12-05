@@ -104,3 +104,5 @@ class PublicSuffixList(object):
 		for i, what in enumerate(hits):
 			if what is not None and what == 0:
 				return '.'.join(parts[i:])
+
+domain_getter = PublicSuffixList()
