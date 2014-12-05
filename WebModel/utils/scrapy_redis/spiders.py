@@ -15,7 +15,6 @@ class RedisMixin(object):
 
         This should be called after the spider has set its crawler object.
         """
-        self.log("Reading urls from Redis Key:%s"%redis_key)
         if not self.redis_key:
             self.redis_key = '%s:start_urls' % self.name
 
@@ -51,6 +50,9 @@ class RedisMixin(object):
 class RedisSpider(RedisMixin, Spider):
     """Spider that reads urls from redis queue when idle."""
 
-    def set_crawler(self, crawler):
-        super(RedisSpider, self).set_crawler(crawler)
-        self.setup_redis()
+    @classmethod
+    def from_crawler(cls, crawler, *args, **kwargs):
+        spider = super(RedisSpider, cls).from_crawler(crawler, *args, **kwargs)
+        spider.setup_redis()
+        return spider
+

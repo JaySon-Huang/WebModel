@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from scrapy.contrib.spiders import CrawlSpider, Rule
+from scrapy.contrib.spiders import CrawlSpider
 from scrapy.contrib.linkextractors import LinkExtractor
 from scrapy import log, Request
 
@@ -16,28 +16,29 @@ from WebModel.utils.robotexclusionrulesparser import RobotExclusionRulesParser a
 from WebModel.utils.publicsuffix import PublicSuffixList
 # 数据库操作 
 from WebModel.database.databasehelper import getCliInstance
+# scrapy-redis库
+from WebModel.utils.scrapy_redis.spiders import RedisMixin, RedisSpider
 
-class WebModelSpider(CrawlSpider):
-	name = 'jayson'
-	allowed_domains = []
+class WebModelSpider(RedisSpider):
+
+	name = 'webmodel'
+	# 爬虫从redis的`redis_key`键中获取需要爬取的url
+	redis_key = 'WebModel:urls_to_visit'
+
+	# allowed_domains = []
 	start_urls = ['http://www.qq.com',]
-	# rules = [Rule(LinkExtractor('/()'),
-	#			 follow=True,
-	# 			 callback='parse'),
-	# 		]
 
 	def __init__(self):
-		CrawlSpider.__init__(self)
-		# 用来解析robots.txt
+		super(WebModelSpider, self).__init__()
 		# 用来解析url获取域名
 		self.domaingetter = PublicSuffixList()
-		for url in WebModelSpider.start_urls:
-			import sqlite3
-			try:
-				domain = self.domaingetter.get_public_suffix(urlparse(url).netloc)
-				getCliInstance().insertWebsite(url, domain)
-			except sqlite3.IntegrityError:
-				getCliInstance().rollback()
+		# for url in WebModelSpider.start_urls:
+		# 	import sqlite3
+		# 	try:
+		# 		domain = self.domaingetter.get_public_suffix(urlparse(url).netloc)
+		# 		getCliInstance().insertWebsite(url, domain)
+		# 	except sqlite3.IntegrityError:
+		# 		getCliInstance().rollback()
 
 	def parse(self, response):
 		# 解析url,获取域名
@@ -54,7 +55,6 @@ class WebModelSpider(CrawlSpider):
 		# 使用xpath获取内容
 		pageItem['url'] = response.url
 		pageItem['title'] = response.xpath('/html/head/title/text()').extract()[0]
-		print pageItem['title']
 		pageItem['links'] = []
 		# 把所有<a>标签的超链接提取出来
 		for link in response.xpath('//a/@href').extract() :
@@ -62,17 +62,17 @@ class WebModelSpider(CrawlSpider):
 			if link.startswith('http://') :
 				pageItem['links'].append(link)
 				# robots判定
-				# if not robotsparser or robotsparser.is_allowed('*', link):
-				# 	pageItem['links'].append(link)
-				# 	yield Request(link, callback=self.parse)
+				if not robotsparser or robotsparser.is_allowed('*', link):
+					pageItem['links'].append(link)
+					yield Request(link, callback=self.parse)
 			elif link.startswith('/') :
 				# 相对定位,把网址补全,再yield请求
 				link = "http://"+ netloc + link
 				pageItem['links'].append(link)
 				# robots判定
-				# if not robotsparser or robotsparser.is_allowed('*', link) :
-				# 	pageItem['links'].append(link)
-				# 	yield Request(link, callback=self.parse)
+				if not robotsparser or robotsparser.is_allowed('*', link) :
+					pageItem['links'].append(link)
+					yield Request(link, callback=self.parse)
 			else :
 				# 不符合以上两种,一般为javascript函数
 				# msg = '%s : not a url'%(link,)
