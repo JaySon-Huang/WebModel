@@ -18,7 +18,7 @@ from WebModel.items import PageItem, RulesetItem
 # 数据库操作 
 from WebModel.database.databasehelper import getCliInstance
 # [bloomfilter库,用以查重](https://github.com/jaybaird/python-bloomfilter/)
-from WebModel.utils.pybloom import BloomFilter
+from pybloom import BloomFilter
 # [域名解析库](https://pypi.python.org/pypi/publicsuffix/)
 from WebModel.utils.publicsuffix import domain_getter, TYPE_DOMAIN, TYPE_IP
 # scrapy-redis 的pipeline
@@ -117,9 +117,10 @@ class RedisPipeline(object):
 		# 外部判断未出现过的链接
 		pipe = server.pipeline()
 		for link, domain, ret_type in newlinks:
-
+			if newlinks[:-3] in ('jpg', 'png', 'zip', 'rar', 'txt'):
+				continue
 			if server.exists(domains_key%domain):
-				spider.log(u"判断失误,%s曾出现"%domain, level=log.CRITICAL)
+				# spider.log(u"判断失误,%s曾出现"%domain, level=log.CRITICAL)
 				continue
 			pipe.hset(domains_key%domain, 'indegree', 1)
 			pipe.hset(domains_key%domain, 'outdegree', 0)

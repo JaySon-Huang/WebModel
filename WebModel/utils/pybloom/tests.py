@@ -1,6 +1,6 @@
 from __future__ import absolute_import
-from pybloom.pybloom import BloomFilter, ScalableBloomFilter
-from pybloom.utils import running_python_3, range_fn
+from WebModel.utils.pybloom.pybloom import BloomFilter, ScalableBloomFilter
+from WebModel.utils.pybloom.utils import running_python_3, range_fn
 
 try:
     from StringIO import StringIO

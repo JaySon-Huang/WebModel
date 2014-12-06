@@ -2,5 +2,5 @@
 
 """
 
-from .pybloom import BloomFilter, ScalableBloomFilter
+from WebModel.utils.pybloom import BloomFilter, ScalableBloomFilter
 
