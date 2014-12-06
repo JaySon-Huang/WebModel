@@ -5,7 +5,7 @@ from scrapy.exceptions import DontCloseSpider
 from scrapy.spider import Spider
 
 import WebModel.utils.scrapy_redis.connection as connection
-from WebModel.utils.rediskeys import load, url_queue_key
+from WebModel.utils.rediskeys import url_queue_key
 
 class RedisMixin(object):
     """Mixin class to implement reading urls from a redis queue."""
@@ -54,7 +54,7 @@ class RedisSpider(RedisMixin, Spider):
         spider = super(RedisSpider, cls).from_crawler(crawler, *args, **kwargs)
         spider.settings = crawler.settings
         spider.setup_redis()
-        load(spider)
+        # load(spider)
         spider.log("Reading URLs from redis list '%s'" % url_queue_key, level=log.INFO)
         return spider
 

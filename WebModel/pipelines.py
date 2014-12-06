@@ -52,8 +52,8 @@ class RedisPipeline(object):
 			if item['update']:
 				# 新域名,建立域名记录
 				#redis数据库
-				self.server.hset(domains_key%{'domain':item['domain']}, 'indegree', 1)
-				self.server.hset(domains_key%{'domain':item['domain']}, 'outdegree', 0)
+				self.server.hset(domains_key%item['domain'], 'indegree', 1)
+				self.server.hset(domains_key%item['domain'], 'outdegree', 0)
 				#sqlite3数据库
 				# self.dbcli.insertDomain(item['domain'])
 
@@ -62,7 +62,7 @@ class RedisPipeline(object):
 				# 把robots.txt内容存储进数据库
 				if item['ruleset']:
 					#redis数据库
-					self.server.hset(domains_key%{'domain':item['domain']}, 'ruleset', item['ruleset'])
+					self.server.hset(domains_key%item['domain'], 'ruleset', item['ruleset'])
 					#sqlite3数据库
 					# self.dbcli.insertRuleset(item['ruleset'], item['domain'])
 
@@ -93,13 +93,13 @@ class RedisPipeline(object):
 		netloc = urlparse(item['url']).netloc
 		self.bloom_netloc_vec.add(netloc)
 		domain = domain_getter.get_domain(item['url'])
-		server.hincrby(domains_key%{'domain':domain}, 'outdegree', len(item['links']))
+		server.hincrby(domains_key%domain, 'outdegree', len(item['links']))
 
 		# 对该网页中所有链接涉及的记录进行更新
 		# 外部判断未出现过的链接
 		for link, domain in newlinks:
-			server.hset(domains_key%{'domain':domain}, 'indegree', 1)
-			server.hset(domains_key%{'domain':domain}, 'outdegree', 0)
+			server.hset(domains_key%domain, 'indegree', 1)
+			server.hset(domains_key%domain, 'outdegree', 0)
 
 			netloc = urlparse(link).netloc
 			# spider.log('Netloc <%s> from <%s>'%(netloc, link))
@@ -114,7 +114,7 @@ class RedisPipeline(object):
 		# 外部判断出现过的链接
 		for link, domain in oldlinks:
 			# 对对应的domain记录入度增加
-			server.hincrby(domains_key%{'domain':domain}, 'indegree', 1)
+			server.hincrby(domains_key%domain, 'indegree', 1)
 		pipe.execute()
 
 

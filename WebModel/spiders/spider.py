@@ -55,7 +55,10 @@ class WebModelSpider(RedisSpider):
 		pageItem = PageItem()
 		# 使用xpath获取内容
 		pageItem['url'] = response.url
-		pageItem['title'] = response.xpath('/html/head/title/text()').extract()[0]
+		try:
+			pageItem['title'] = response.xpath('/html/head/title/text()').extract()[0]
+		except IndexError:
+			pageItem['title'] = '(crwal title failed)'
 		pageItem['links'] = []
 		# 把所有<a>标签的超链接提取出来
 		for link in response.xpath('//a/@href').extract() :
