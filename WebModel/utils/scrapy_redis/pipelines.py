@@ -1,4 +1,4 @@
-import redis
+import WebModel.utils.redis as redis
 import WebModel.utils.scrapy_redis.connection as connection
 
 from twisted.internet.threads import deferToThread

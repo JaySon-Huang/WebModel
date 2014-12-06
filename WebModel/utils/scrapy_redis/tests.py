@@ -1,6 +1,6 @@
 import os
-import redis
-import connection
+import WebModel.utils.redis as redis
+import WebModel.utils.connection as connection
 
 from scrapy.http import Request
 from scrapy.spider import Spider

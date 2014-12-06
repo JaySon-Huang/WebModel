@@ -1,10 +1,10 @@
 from scrapy import log
-import WebModel.utils.scrapy_redis.connection as connection
 
 from scrapy import signals
 from scrapy.exceptions import DontCloseSpider
 from scrapy.spider import Spider
 
+import WebModel.utils.scrapy_redis.connection as connection
 from WebModel.utils.rediskeys import load, url_queue_key
 
 class RedisMixin(object):
@@ -48,7 +48,6 @@ class RedisMixin(object):
 
 class RedisSpider(RedisMixin, Spider):
     """Spider that reads urls from redis queue when idle."""
-
 
     @classmethod
     def from_crawler(cls, crawler, *args, **kwargs):

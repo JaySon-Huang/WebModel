@@ -1,4 +1,4 @@
-import redis
+import WebModel.utils.redis as redis
 
 
 # Default values.
