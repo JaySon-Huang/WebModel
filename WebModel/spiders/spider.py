@@ -10,7 +10,7 @@ from WebModel.items import PageItem, RulesetItem
 # [robots.txt解析库(进行过修改)](http://nikitathespider.com/python/rerp/)
 from WebModel.utils.robotexclusionrulesparser import RobotExclusionRulesParser as RobotsParser
 # [域名解析库](https://pypi.python.org/pypi/publicsuffix/)
-from WebModel.utils.publicsuffix import PublicSuffixList
+from WebModel.utils.publicsuffix import domain_getter, TYPE_DOMAIN, TYPE_IP
 # 数据库操作 
 from WebModel.database.databasehelper import getCliInstance
 # scrapy-redis库
@@ -28,11 +28,10 @@ class WebModelSpider(RedisSpider):
 	def __init__(self):
 		super(WebModelSpider, self).__init__()
 		# 用来解析url获取域名
-		self.domaingetter = PublicSuffixList()
 		# for url in WebModelSpider.start_urls:
 		# 	import sqlite3
 		# 	try:
-		# 		domain = self.domaingetter.get_public_suffix(urlparse(url).netloc)
+		# 		domain = domain_getter.get_public_suffix(urlparse(url).netloc)
 		# 		getCliInstance().insertWebsite(url, domain)
 		# 	except sqlite3.IntegrityError:
 		# 		getCliInstance().rollback()
@@ -43,7 +42,7 @@ class WebModelSpider(RedisSpider):
 			return
 		# 解析url,获取域名
 		netloc = urlparse(response.url).netloc
-		domain = self.domaingetter.get_domain(response.url)
+		domain, ret_type = domain_getter.get_domain(response.url)
 
 		# 检查并获取domain对应的robots内容
 		# robotsparser用以判断url是否被robots.txt内规则允许
@@ -51,6 +50,10 @@ class WebModelSpider(RedisSpider):
 		# 把rulesetItem送到pipeline
 		yield rulesetItem
 
+		#IP地址
+		if ret_type == TYPE_IP:
+			return
+			
 		pageItem = PageItem()
 		# 使用xpath获取内容
 		pageItem['url'] = response.url

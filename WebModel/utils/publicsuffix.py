@@ -8,8 +8,12 @@ import os.path
 # [url解析函数 urlparse](https://docs.python.org/2/library/urlparse.html)
 from urlparse import urlparse
 
+TYPE_DOMAIN = 0
+TYPE_IP = 1
+
 
 class PublicSuffixList(object):
+
 	def __init__(self, input_file=None):
 		"""Reads and parses public suffix list.
 		
@@ -100,7 +104,6 @@ class PublicSuffixList(object):
 		http://publicsuffix.org uses decoded names, so it is
 		up to the caller to decode any Punycode-encoded names.
 		"""
-
 		parts = domain.lower().strip('.').split('.')
 		hits = [None] * len(parts)
 
@@ -110,7 +113,14 @@ class PublicSuffixList(object):
 			if what is not None and what == 0:
 				return '.'.join(parts[i:])
 
+
 	def get_domain(self, url):
-		return self.get_public_suffix(urlparse(url).netloc.split(':')[0])
+		noport = urlparse(url).netloc.split(':')[0]
+		try:
+			map(int, noport.split('.'))
+			#IP地址
+			return (noport, TYPE_IP)
+		except ValueError:
+			return (self.get_public_suffix(noport), TYPE_DOMAIN)
 
 domain_getter = PublicSuffixList()

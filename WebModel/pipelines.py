@@ -20,7 +20,7 @@ from WebModel.database.databasehelper import getCliInstance
 # [bloomfilter库,用以查重](https://github.com/jaybaird/python-bloomfilter/)
 from WebModel.utils.pybloom import BloomFilter
 # [域名解析库](https://pypi.python.org/pypi/publicsuffix/)
-from WebModel.utils.publicsuffix import domain_getter
+from WebModel.utils.publicsuffix import domain_getter, TYPE_DOMAIN, TYPE_IP
 # scrapy-redis 的pipeline
 import WebModel.utils.scrapy_redis.connection as connection
 from WebModel.utils.rediskeys import url_queue_key, domains_key, url_ignore_key, url_visited_key
@@ -79,13 +79,15 @@ class RedisPipeline(object):
 	def _process_page(self, item, spider):
 		newlinks, oldlinks = [], []
 		for link in item['links']:
-			domain = domain_getter.get_domain(link)
+			domain, ret_type = domain_getter.get_domain(link)
+			if ret_type == TYPE_IP:
+				continue
 			if not self.bloom_domain_vec.add(domain) :
 				# 返回False,bloomfilter判定未出现过
-				newlinks.append( (link, domain) )
+				newlinks.append( (link, domain, ret_type) )
 			else :
 				# 返回True,bloomfilter判定已经出现过
-				oldlinks.append( (link, domain) )
+				oldlinks.append( (link, domain, ret_type) )
 
 		#redis数据库
 		self._updateInfo(self.server, item, newlinks, oldlinks, spider)
@@ -100,7 +102,7 @@ class RedisPipeline(object):
 	def _updateCurPage(self, server, item, spider):
 		server.sadd(url_visited_key, item['url'])
 		netloc = urlparse(item['url']).netloc
-		domain = domain_getter.get_domain(item['url'])
+		domain, ret_type = domain_getter.get_domain(item['url'])
 		try:
 			self.bloom_domain_vec.add(domain)
 			self.bloom_netloc_vec.add(netloc)
@@ -116,7 +118,7 @@ class RedisPipeline(object):
 		# 对该网页中所有链接涉及的记录进行更新
 		# 外部判断未出现过的链接
 		pipe = server.pipeline()
-		for link, domain in newlinks:
+		for link, domain, ret_type in newlinks:
 
 			if server.exists(domains_key%domain):
 				spider.log(u"判断失误,%s曾出现"%domain, level=log.CRITICAL)
