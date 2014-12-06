@@ -32,7 +32,7 @@ SCHEDULER_QUEUE_CLASS = 'WebModel.utils.scrapy_redis.queue.SpiderPriorityQueue'
 # Max idle time to prevent the spider from being closed when distributed crawling.
 # This only works if queue class is SpiderQueue or SpiderStack,
 # and may also block the same time when your spider start at the first time (because the queue is empty).
-SCHEDULER_IDLE_BEFORE_CLOSE = 10
+SCHEDULER_IDLE_BEFORE_CLOSE = 3
 # Store scraped item in redis for post-processing.
 ITEM_PIPELINES = {
     # 'WebModel.utils.scrapy_redis.pipelines.RedisPipeline': 300,

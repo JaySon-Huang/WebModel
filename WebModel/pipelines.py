@@ -32,8 +32,8 @@ class RedisPipeline(object):
 		# redis server
 		self.server = server
 		# 用来判断是否重复出现
-		self.bloom_vec = BloomFilter(capacity=1<<32, error_rate=0.001)
-		self.bloom_netloc_vec = BloomFilter(capacity=1<<32, error_rate=0.01)
+		self.bloom_domain_vec = BloomFilter(capacity=1<<16, error_rate=0.001)
+		self.bloom_netloc_vec = BloomFilter(capacity=1<<16, error_rate=0.001)
 
 	@classmethod
 	def from_crawler(cls, crawler):
@@ -56,6 +56,8 @@ class RedisPipeline(object):
 
 	def _process_ruleset(self, item, spider):
 		if item['update']:
+			if item['domain'] in self.bloom_domain_vec:
+				spider.log("BloomFilter 判断错误!域名%s未出现过"%item['domain'], level=log.WARNING)
 			# 新域名,建立域名记录
 			#redis数据库
 			self.server.hset(domains_key%item['domain'], 'indegree', 1)
@@ -78,7 +80,7 @@ class RedisPipeline(object):
 		newlinks, oldlinks = [], []
 		for link in item['links']:
 			domain = domain_getter.get_domain(link)
-			if not self.bloom_vec.add(link) :
+			if not self.bloom_domain_vec.add(domain) :
 				# 返回False,bloomfilter判定未出现过
 				newlinks.append( (link, domain) )
 			else :
@@ -91,34 +93,75 @@ class RedisPipeline(object):
 		# getCliInstance().updateInfo(item, newlinks, oldlinks)
 
 	def _updateInfo(self, server, item, newlinks, oldlinks, spider):
-		pipe = server.pipeline()
-		self.server.lpush(url_visited_key, item['url'])
+		self._updateCurPage(server, item, spider)
+		self._updateOutLink(server, newlinks, oldlinks, spider)
 
+
+	def _updateCurPage(self, server, item, spider):
+		server.sadd(url_visited_key, item['url'])
 		netloc = urlparse(item['url']).netloc
-		self.bloom_netloc_vec.add(netloc)
 		domain = domain_getter.get_domain(item['url'])
+		try:
+			self.bloom_domain_vec.add(domain)
+			self.bloom_netloc_vec.add(netloc)
+		except IndexError:
+			# BloomFilter满了
+			spider.log("BloomFilter is at the capacity.", level=log.ERROR)
 		server.hincrby(domains_key%domain, 'outdegree', len(item['links']))
 
+		i = int(server.hget(domains_key%domain, 'outdegree'))
+		spider.log('outdegree of %s: %d'%(domain, i), level=log.INFO)
+
+	def _updateOutLink(self, server, newlinks, oldlinks, spider):
 		# 对该网页中所有链接涉及的记录进行更新
 		# 外部判断未出现过的链接
+		pipe = server.pipeline()
 		for link, domain in newlinks:
-			server.hset(domains_key%domain, 'indegree', 1)
-			server.hset(domains_key%domain, 'outdegree', 0)
+
+			if server.exists(domains_key%domain):
+				spider.log(u"判断失误,%s曾出现"%domain, level=log.CRITICAL)
+				continue
+			pipe.hset(domains_key%domain, 'indegree', 1)
+			pipe.hset(domains_key%domain, 'outdegree', 0)
 
 			netloc = urlparse(link).netloc
 			# spider.log('Netloc <%s> from <%s>'%(netloc, link))
-			if not self.bloom_netloc_vec.add(netloc):
-				spider.log("Spot new netloc: %s"%netloc, level=log.DEBUG)
 
-				server.rpush(url_queue_key, link)
+			try:
+				isAppeared = self.bloom_netloc_vec.add(netloc)
+			except IndexError:
+				# BloomFilter满了
+				spider.log("BloomFilter is at the capacity.", level=log.ERROR)
+				isAppeared = False
+
+			if not isAppeared:
+				# 去除端口号, 以‘.’分割
+				parts = netloc.split(':')[0].split('.')
+				if len(parts) <= 3:
+					spider.log("Spot new netloc: %s"%netloc, level=log.DEBUG)
+					pipe.rpush(url_queue_key, link)
+				elif parts[-1] == 'cn' and len(parts) <= 4 :
+					spider.log("Spot new netloc: %s"%netloc, level=log.DEBUG)
+					pipe.rpush(url_queue_key, link)
+				elif parts[0] == 'www' and len(parts) <= 4 :
+					spider.log("Spot new netloc: %s"%netloc, level=log.DEBUG)
+					pipe.rpush(url_queue_key, link)
+				else:
+					self._drop(link, spider, pipe, '%s seems is NOT new netloc'%netloc)
 			else :
-				server.lpush(url_ignore_key, link)
 				# spider.log("不再爬取%s上的网站:"%netloc, level=log.DEBUG)
+				self._drop(link, spider, pipe, None)
 				pass
+		pipe.execute()
+
+		pipe = server.pipeline()
 		# 外部判断出现过的链接
 		for link, domain in oldlinks:
 			# 对对应的domain记录入度增加
-			server.hincrby(domains_key%domain, 'indegree', 1)
+			pipe.hincrby(domains_key%domain, 'indegree', 1)
 		pipe.execute()
-
+	def _drop(self, link, spider, pipe, reason):
+		pipe.sadd(url_ignore_key, link)
+		if reason:
+			spider.log(reason, level=log.INFO)
 

@@ -1,8 +1,7 @@
 # -*- coding: utf-8 -*-
 
-from scrapy.contrib.spiders import CrawlSpider
-from scrapy.contrib.linkextractors import LinkExtractor
-from scrapy import log, Request
+from scrapy import log
+from scrapy.selector import Selector
 
 from urlparse import urlparse
 
@@ -55,13 +54,14 @@ class WebModelSpider(RedisSpider):
 		pageItem = PageItem()
 		# 使用xpath获取内容
 		pageItem['url'] = response.url
+		hxs = Selector(text=response.body)
 		try:
-			pageItem['title'] = response.xpath('/html/head/title/text()').extract()[0]
+			pageItem['title'] = hxs.xpath('/html/head/title/text()').extract()[0]
 		except IndexError:
 			pageItem['title'] = '(crwal title failed)'
 		pageItem['links'] = []
 		# 把所有<a>标签的超链接提取出来
-		for link in response.xpath('//a/@href').extract() :
+		for link in hxs.xpath('//a/@href').extract() :
 			# 判断超链接内容是否为一个合法网址/相对网址
 			if link.startswith('http://') :
 				pageItem['links'].append(link)
@@ -69,6 +69,7 @@ class WebModelSpider(RedisSpider):
 				if not robotsparser or robotsparser.is_allowed('*', link):
 					pageItem['links'].append(link)
 
+					#Schedule从redis队列中获取, 不在这里发起请求
 					# yield Request(link, callback=self.parse)
 			
 			elif link.startswith('/') :
@@ -79,6 +80,7 @@ class WebModelSpider(RedisSpider):
 				if not robotsparser or robotsparser.is_allowed('*', link) :
 					pageItem['links'].append(link)
 
+					#Schedule从redis队列中获取, 不在这里发起请求
 					# yield Request(link, callback=self.parse)
 			else :
 				# 不符合以上两种,一般为javascript函数
@@ -99,8 +101,8 @@ class WebModelSpider(RedisSpider):
 
 		# 检查这个域名是否在数据库中
 		#redis
-		exist = self.server.exists(domains_key+':'+domain)
-		ruleset = self.server.hget(domains_key+':'+domain, 'ruleset')
+		exist = self.server.exists(domains_key%domain)
+		ruleset = self.server.hget(domains_key%domain, 'ruleset')
 		#sqlite3
 		# exist, ruleset = getCliInstance().robotsrulesetOfDomain(domain)
 		if not exist:
