@@ -49,15 +49,20 @@ class RedisMixin(object):
 class RedisSpider(RedisMixin, Spider):
     """Spider that reads urls from redis queue when idle."""
 
+    def set_crawler(self, crawler):
+        # super(RedisSpider, self).set_crawler(crawler)
+        self.setup_redis()
+        self.log("`set_crawler` Reading URLs from redis list '%s'" % url_queue_key, level=log.INFO)
+
     @classmethod
     def from_crawler(cls, crawler, *args, **kwargs):
         try:
             spider = super(RedisSpider, cls).from_crawler(crawler, *args, **kwargs)
         except AttributeError:
-            spider = super(RedisSpider, cls).set_crawler(crawler)
-        spider.settings = crawler.settings
+            spider = cls()
+            super(RedisSpider ,spider).set_crawler(crawler)
         spider.setup_redis()
         # load(spider)
-        spider.log("Reading URLs from redis list '%s'" % url_queue_key, level=log.INFO)
+        spider.log("`from_crawler` Reading URLs from redis list '%s'" % url_queue_key, level=log.INFO)
         return spider
 
