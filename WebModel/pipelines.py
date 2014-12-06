@@ -7,10 +7,7 @@
 
 #python库
 import sqlite3
-# [url解析函数 urlparse](https://docs.python.org/2/library/urlparse.html)
-from urlparse import urlparse
 from scrapy import log
-import redis
 
 from twisted.internet.threads import deferToThread
 from scrapy.utils.serialize import ScrapyJSONEncoder
@@ -22,46 +19,10 @@ from WebModel.database.databasehelper import getCliInstance
 # [bloomfilter库,用以查重](https://github.com/jaybaird/python-bloomfilter/)
 from WebModel.utils.pybloom import BloomFilter
 # [域名解析库](https://pypi.python.org/pypi/publicsuffix/)
-from WebModel.utils.publicsuffix import PublicSuffixList, domain_getter
+from WebModel.utils.publicsuffix import domain_getter
 # scrapy-redis 的pipeline
 import WebModel.utils.scrapy_redis.connection as connection
 from WebModel.utils.rediskeys import url_queue_key, domains_key
-
-class WebModelPipeline(object):
-
-	def __init__(self):
-		# 用来判断是否重复出现
-		self.bloom_vec = BloomFilter(capacity=10000, error_rate=0.001)
-
-	def process_item(self, item, spider):
-		if isinstance(item, RulesetItem):
-			if item['update']:
-				# 新域名,建立域名记录
-				self.dbcli.insertDomain(item['domain'])
-				spider.log("Spot New Domain:"+item['domain'], level=log.INFO)
-
-				# 把robots.txt内容存储进数据库
-				if item['ruleset']:
-					self.dbcli.insertRuleset(item['ruleset'], item['domain'])
-					spider.log("Insert Ruleset to Domain:"+item['domain'], level=log.INFO)
-		elif isinstance(item, PageItem):
-			newlinks, oldlinks = [], []
-			domain_getter = PublicSuffixList()
-			for link in item['links']:
-				domain = domain_getter.get_public_suffix(urlparse(link).netloc)
-				if not self.bloom_vec.add(link) :
-					# 返回False,bloomfilter判定未出现过
-					newlinks.append( (link, domain) )
-				else :
-					# 返回True,bloomfilter判定已经出现过
-					# 对于Website中已经有记录的，增加其入度
-					oldlinks.append( (link, domain) )
-			getCliInstance().updateInfo(item, newlinks, oldlinks)
-
-	def __del__(self):
-		getCliInstance().close()
-
-
 
 class RedisPipeline(object):
 	"""Pushes serialized item into a redis list/queue"""
@@ -70,7 +31,7 @@ class RedisPipeline(object):
 		# redis server
 		self.server = server
 		# 用来判断是否重复出现
-		self.bloom_vec = BloomFilter(capacity=10000, error_rate=0.001)
+		self.bloom_vec = BloomFilter(capacity=1<<32, error_rate=0.001)
 
 	@classmethod
 	def from_crawler(cls, crawler):
@@ -109,7 +70,7 @@ class RedisPipeline(object):
 		elif isinstance(item, PageItem):
 			newlinks, oldlinks = [], []
 			for link in item['links']:
-				domain = domain_getter.get_public_suffix(urlparse(link).netloc)
+				domain = domain_getter.get_domain(link)
 				if not self.bloom_vec.add(link) :
 					# 返回False,bloomfilter判定未出现过
 					newlinks.append( (link, domain) )
@@ -125,7 +86,7 @@ class RedisPipeline(object):
 
 	def updateInfo(self, server, item, newlinks, oldlinks, spider):
 		pipe = server.pipeline()
-		domain = domain_getter.get_public_suffix(item['url'])
+		domain = domain_getter.get_domain(item['url'])
 		server.hincrby(domains_key+':'+domain, 'outdegree', len(item['links']))
 		# 对该网页中所有链接涉及的记录进行更新
 		# 外部判断未出现过的链接

@@ -4,8 +4,6 @@ from scrapy.contrib.spiders import CrawlSpider
 from scrapy.contrib.linkextractors import LinkExtractor
 from scrapy import log, Request
 
-#python库
-# [url解析函数 urlparse](https://docs.python.org/2/library/urlparse.html)
 from urlparse import urlparse
 
 #自定义的库
@@ -42,8 +40,7 @@ class WebModelSpider(RedisSpider):
 
 	def parse(self, response):
 		# 解析url,获取域名
-		netloc = urlparse(response.url).netloc
-		domain = self.domaingetter.get_public_suffix(netloc)
+		domain = self.domaingetter.get_domain(response.url)
 
 		# 检查并获取domain对应的robots内容
 		# robotsparser用以判断url是否被robots.txt内规则允许

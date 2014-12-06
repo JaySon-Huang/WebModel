@@ -3,6 +3,10 @@
 
 import codecs
 import os.path
+#python库
+# [url解析函数 urlparse](https://docs.python.org/2/library/urlparse.html)
+from urlparse import urlparse
+
 
 class PublicSuffixList(object):
 	def __init__(self, input_file=None):
@@ -104,5 +108,8 @@ class PublicSuffixList(object):
 		for i, what in enumerate(hits):
 			if what is not None and what == 0:
 				return '.'.join(parts[i:])
+
+	def get_domain(self, url):
+		return self.get_public_suffix(urlparse(url).netloc)
 
 domain_getter = PublicSuffixList()
