@@ -77,10 +77,13 @@ class RedisPipeline(object):
 				spider.log("爬取到域名的robots规则: "+item['domain'], level=log.INFO)
 
 	def _process_page(self, item, spider):
+		self._updateCurPage(self.server, item, spider)
+
 		newlinks, oldlinks = [], []
 		for link in item['links']:
 			domain, ret_type = domain_getter.get_domain(link)
 			if ret_type == TYPE_IP:
+				# 忽略IP
 				continue
 			if not self.bloom_domain_vec.add(domain) :
 				# 返回False,bloomfilter判定未出现过
@@ -90,14 +93,9 @@ class RedisPipeline(object):
 				oldlinks.append( (link, domain, ret_type) )
 
 		#redis数据库
-		self._updateInfo(self.server, item, newlinks, oldlinks, spider)
+		self._updateOutLink(self.server, newlinks, oldlinks, spider)
 		#sqlite3数据库
 		# getCliInstance().updateInfo(item, newlinks, oldlinks)
-
-	def _updateInfo(self, server, item, newlinks, oldlinks, spider):
-		self._updateCurPage(server, item, spider)
-		self._updateOutLink(server, newlinks, oldlinks, spider)
-
 
 	def _updateCurPage(self, server, item, spider):
 		server.sadd(url_visited_key, item['url'])
@@ -158,10 +156,11 @@ class RedisPipeline(object):
 
 		pipe = server.pipeline()
 		# 外部判断出现过的链接
-		for link, domain in oldlinks:
+		for link, domain, ret_type in oldlinks:
 			# 对对应的domain记录入度增加
 			pipe.hincrby(domains_key%domain, 'indegree', 1)
 		pipe.execute()
+
 	def _drop(self, link, spider, pipe, reason):
 		pipe.sadd(url_ignore_key, link)
 		if reason:
