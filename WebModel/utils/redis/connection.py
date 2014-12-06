@@ -14,10 +14,10 @@ try:
 except ImportError:
     ssl_available = False
 
-from redis._compat import (b, xrange, imap, byte_to_chr, unicode, bytes, long,
+from WebModel.utils.redis._compat import (b, xrange, imap, byte_to_chr, unicode, bytes, long,
                            BytesIO, nativestr, basestring, iteritems,
                            LifoQueue, Empty, Full, urlparse, parse_qs)
-from redis.exceptions import (
+from WebModel.utils.redis.exceptions import (
     RedisError,
     ConnectionError,
     TimeoutError,
@@ -29,7 +29,7 @@ from redis.exceptions import (
     ExecAbortError,
     ReadOnlyError
 )
-from redis.utils import HIREDIS_AVAILABLE
+from WebModel.utils.redis.utils import HIREDIS_AVAILABLE
 if HIREDIS_AVAILABLE:
     import hiredis
 

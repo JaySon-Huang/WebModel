@@ -2,10 +2,10 @@ import os
 import random
 import weakref
 
-from redis.client import StrictRedis
-from redis.connection import ConnectionPool, Connection
-from redis.exceptions import ConnectionError, ResponseError, ReadOnlyError
-from redis._compat import iteritems, nativestr, xrange
+from WebModel.utils.redis.client import StrictRedis
+from WebModel.utils.redis.connection import ConnectionPool, Connection
+from WebModel.utils.redis.exceptions import ConnectionError, ResponseError, ReadOnlyError
+from WebModel.utils.redis._compat import iteritems, nativestr, xrange
 
 
 class MasterNotFoundError(ConnectionError):

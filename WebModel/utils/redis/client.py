@@ -5,12 +5,12 @@ import sys
 import warnings
 import threading
 import time as mod_time
-from redis._compat import (b, basestring, bytes, imap, iteritems, iterkeys,
+from WebModel.utils.redis._compat import (b, basestring, bytes, imap, iteritems, iterkeys,
                            itervalues, izip, long, nativestr, unicode)
-from redis.connection import (ConnectionPool, UnixDomainSocketConnection,
+from WebModel.utils.redis.connection import (ConnectionPool, UnixDomainSocketConnection,
                               SSLConnection, Token)
-from redis.lock import Lock, LuaLock
-from redis.exceptions import (
+from WebModel.utils.redis.lock import Lock, LuaLock
+from WebModel.utils.redis.exceptions import (
     ConnectionError,
     DataError,
     ExecAbortError,
