@@ -49,42 +49,46 @@ class RedisPipeline(object):
 
 	def _process_item(self, item, spider):
 		if isinstance(item, RulesetItem):
-			if item['update']:
-				# 新域名,建立域名记录
-				#redis数据库
-				self.server.hset(domains_key%item['domain'], 'indegree', 1)
-				self.server.hset(domains_key%item['domain'], 'outdegree', 0)
-				#sqlite3数据库
-				# self.dbcli.insertDomain(item['domain'])
-
-				spider.log("爬取到新域名: "+item['domain'], level=log.INFO)
-
-				# 把robots.txt内容存储进数据库
-				if item['ruleset']:
-					#redis数据库
-					self.server.hset(domains_key%item['domain'], 'ruleset', item['ruleset'])
-					#sqlite3数据库
-					# self.dbcli.insertRuleset(item['ruleset'], item['domain'])
-
-					spider.log("爬取到域名的robots规则: "+item['domain'], level=log.INFO)
-
+			self._process_ruleset(item, spider)
 		elif isinstance(item, PageItem):
-			newlinks, oldlinks = [], []
-			for link in item['links']:
-				domain = domain_getter.get_domain(link)
-				if not self.bloom_vec.add(link) :
-					# 返回False,bloomfilter判定未出现过
-					newlinks.append( (link, domain) )
-				else :
-					# 返回True,bloomfilter判定已经出现过
-					oldlinks.append( (link, domain) )
-
-			#redis数据库
-			self._updateInfo(self.server, item, newlinks, oldlinks, spider)
-			#sqlite3数据库
-			# getCliInstance().updateInfo(item, newlinks, oldlinks)
+			self._process_page(item, spider)
 		return item
 
+	def _process_ruleset(self, item, spider):
+		if item['update']:
+			# 新域名,建立域名记录
+			#redis数据库
+			self.server.hset(domains_key%item['domain'], 'indegree', 1)
+			self.server.hset(domains_key%item['domain'], 'outdegree', 0)
+			#sqlite3数据库
+			# self.dbcli.insertDomain(item['domain'])
+
+			spider.log("爬取到新域名: "+item['domain'], level=log.INFO)
+
+			# 把robots.txt内容存储进数据库
+			if item['ruleset']:
+				#redis数据库
+				self.server.hset(domains_key%item['domain'], 'ruleset', item['ruleset'])
+				#sqlite3数据库
+				# self.dbcli.insertRuleset(item['ruleset'], item['domain'])
+
+				spider.log("爬取到域名的robots规则: "+item['domain'], level=log.INFO)
+
+	def _process_page(self, item, spider):
+		newlinks, oldlinks = [], []
+		for link in item['links']:
+			domain = domain_getter.get_domain(link)
+			if not self.bloom_vec.add(link) :
+				# 返回False,bloomfilter判定未出现过
+				newlinks.append( (link, domain) )
+			else :
+				# 返回True,bloomfilter判定已经出现过
+				oldlinks.append( (link, domain) )
+
+		#redis数据库
+		self._updateInfo(self.server, item, newlinks, oldlinks, spider)
+		#sqlite3数据库
+		# getCliInstance().updateInfo(item, newlinks, oldlinks)
 
 	def _updateInfo(self, server, item, newlinks, oldlinks, spider):
 		pipe = server.pipeline()

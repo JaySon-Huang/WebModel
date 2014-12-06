@@ -107,7 +107,7 @@ class WebModelSpider(RedisSpider):
 			# 从网络读取robots.txt文件
 			robotsURL = "http://www."+domain+"/robots.txt"
 			self.log("fetching robots.txt from "+robotsURL, level=log.INFO)
-			if robotsparser.fetch(robotsURL):
+			if robotsparser.fetch(robotsURL, timeout=5):
 				ruleset = str(robotsparser)
 				self.log("Successfully parse "+robotsURL, level=log.INFO)
 			else:

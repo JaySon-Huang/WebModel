@@ -111,6 +111,6 @@ class PublicSuffixList(object):
 				return '.'.join(parts[i:])
 
 	def get_domain(self, url):
-		return self.get_public_suffix(urlparse(url).netloc)
+		return self.get_public_suffix(urlparse(url).netloc.split(':')[0])
 
 domain_getter = PublicSuffixList()
