@@ -39,7 +39,11 @@ class WebModelSpider(RedisSpider):
 		# 		getCliInstance().rollback()
 
 	def parse(self, response):
+		if response.status != 200:
+			self.log("Response code: %d from %s"%(response.status, response['url']), level=log.WARNING)
+			return
 		# 解析url,获取域名
+		netloc = urlparse(response.url).netloc
 		domain = self.domaingetter.get_domain(response.url)
 
 		# 检查并获取domain对应的robots内容

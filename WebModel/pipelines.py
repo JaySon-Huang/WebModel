@@ -8,6 +8,7 @@
 #python库
 import sqlite3
 from scrapy import log
+from urlparse import urlparse
 
 from twisted.internet.threads import deferToThread
 from scrapy.utils.serialize import ScrapyJSONEncoder
@@ -22,7 +23,7 @@ from WebModel.utils.pybloom import BloomFilter
 from WebModel.utils.publicsuffix import domain_getter
 # scrapy-redis 的pipeline
 import WebModel.utils.scrapy_redis.connection as connection
-from WebModel.utils.rediskeys import url_queue_key, domains_key
+from WebModel.utils.rediskeys import url_queue_key, domains_key, url_ignore_key, url_visited_key
 
 class RedisPipeline(object):
 	"""Pushes serialized item into a redis list/queue"""
@@ -32,6 +33,7 @@ class RedisPipeline(object):
 		self.server = server
 		# 用来判断是否重复出现
 		self.bloom_vec = BloomFilter(capacity=1<<32, error_rate=0.001)
+		self.bloom_netloc_vec = BloomFilter(capacity=1<<32, error_rate=0.01)
 
 	@classmethod
 	def from_crawler(cls, crawler):
@@ -50,22 +52,21 @@ class RedisPipeline(object):
 			if item['update']:
 				# 新域名,建立域名记录
 				#redis数据库
-				self.server.hset(domains_key+':'+item['domain'], 'indegree', 1)
-				self.server.hset(domains_key+':'+item['domain'], 'outdegree', 0)
-
+				self.server.hset(domains_key%{'domain':item['domain']}, 'indegree', 1)
+				self.server.hset(domains_key%{'domain':item['domain']}, 'outdegree', 0)
 				#sqlite3数据库
 				# self.dbcli.insertDomain(item['domain'])
 
-				spider.log("Spot New Domain:"+item['domain'], level=log.INFO)
+				spider.log("爬取到新域名: "+item['domain'], level=log.INFO)
 
 				# 把robots.txt内容存储进数据库
 				if item['ruleset']:
 					#redis数据库
-					self.server.hset(domains_key+':'+item['domain'], 'ruleset', item['ruleset'])
+					self.server.hset(domains_key%{'domain':item['domain']}, 'ruleset', item['ruleset'])
 					#sqlite3数据库
 					# self.dbcli.insertRuleset(item['ruleset'], item['domain'])
 
-					spider.log("Insert Ruleset to Domain:"+item['domain'], level=log.INFO)
+					spider.log("爬取到域名的robots规则: "+item['domain'], level=log.INFO)
 
 		elif isinstance(item, PageItem):
 			newlinks, oldlinks = [], []
@@ -79,25 +80,41 @@ class RedisPipeline(object):
 					oldlinks.append( (link, domain) )
 
 			#redis数据库
-			self.updateInfo(self.server, item, newlinks, oldlinks, spider)
+			self._updateInfo(self.server, item, newlinks, oldlinks, spider)
 			#sqlite3数据库
 			# getCliInstance().updateInfo(item, newlinks, oldlinks)
 		return item
 
-	def updateInfo(self, server, item, newlinks, oldlinks, spider):
+
+	def _updateInfo(self, server, item, newlinks, oldlinks, spider):
 		pipe = server.pipeline()
+		self.server.lpush(url_visited_key, item['url'])
+
+		netloc = urlparse(item['url']).netloc
+		self.bloom_netloc_vec.add(netloc)
 		domain = domain_getter.get_domain(item['url'])
-		server.hincrby(domains_key+':'+domain, 'outdegree', len(item['links']))
+		server.hincrby(domains_key%{'domain':domain}, 'outdegree', len(item['links']))
+
 		# 对该网页中所有链接涉及的记录进行更新
 		# 外部判断未出现过的链接
 		for link, domain in newlinks:
-			server.hset(domains_key+':'+domain, 'indegree', 1)
-			server.hset(domains_key+':'+domain, 'outdegree', 0)
-			server.rpush(url_queue_key, link)
+			server.hset(domains_key%{'domain':domain}, 'indegree', 1)
+			server.hset(domains_key%{'domain':domain}, 'outdegree', 0)
+
+			netloc = urlparse(link).netloc
+			# spider.log('Netloc <%s> from <%s>'%(netloc, link))
+			if not self.bloom_netloc_vec.add(netloc):
+				spider.log("Spot new netloc: %s"%netloc, level=log.INFO)
+
+				server.rpush(url_queue_key, link)
+			else :
+				server.lpush(url_ignore_key, link)
+				# spider.log("不再爬取%s上的网站:"%netloc, level=log.DEBUG)
+				pass
 		# 外部判断出现过的链接
 		for link, domain in oldlinks:
 			# 对对应的domain记录入度增加
-			server.hincrby(domains_key+':'+domain, 'indegree', 1)
+			server.hincrby(domains_key%{'domain':domain}, 'indegree', 1)
 		pipe.execute()
 
 

@@ -8,7 +8,9 @@ _REDIS_DOMAINS_KEY = '%(spider)s:domains'
 _REDIS_RULESETS_KEY = '%(spider)s:rulesets'
 
 url_queue_key = 'webmodel:urls_to_visit'
-domains_key = 'webmodel:domains'
+url_visited_key = 'webmodel:urls_visited'
+url_ignore_key = 'webmodel:urls_ignore'
+domains_key = 'webmodel:domains:%(domain)s'
 
 def load(spider):
     global url_queue_key,domains_key

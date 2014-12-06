@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """Public Suffix List module for Python.
 """
 
