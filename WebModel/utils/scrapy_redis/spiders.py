@@ -51,7 +51,10 @@ class RedisSpider(RedisMixin, Spider):
 
     @classmethod
     def from_crawler(cls, crawler, *args, **kwargs):
-        spider = super(RedisSpider, cls).from_crawler(crawler, *args, **kwargs)
+        try:
+            spider = super(RedisSpider, cls).from_crawler(crawler, *args, **kwargs)
+        except AttributeError:
+            spider = super(RedisSpider, cls).set_crawler(crawler)
         spider.settings = crawler.settings
         spider.setup_redis()
         # load(spider)
