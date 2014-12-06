@@ -31,7 +31,7 @@ WebModel
 * [publicsuffix - 获取域名](https://pypi.python.org/pypi/publicsuffix/)  
 * [robotexclusionrulesparser - 解析robots.txt](http://nikitathespider.com/python/rerp/)  
 * [Redis - 作为分布式队列](http://www.redis.io/)  
-* Scrapy 和 Redis 的融合[scrapy-redis](https://github.com/darkrho/scrapy-redis)(对新版的Scrapy适配做了调整)  
+* Scrapy 和 Redis 的融合: [scrapy-redis](https://github.com/darkrho/scrapy-redis)(对新版的Scrapy适配做了调整)  
 * python操作Redis数据库: [redis-py](https://github.com/andymccurdy/redis-py)  
 
 ## 参考文献

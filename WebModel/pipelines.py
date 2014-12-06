@@ -108,7 +108,7 @@ class RedisPipeline(object):
 			netloc = urlparse(link).netloc
 			# spider.log('Netloc <%s> from <%s>'%(netloc, link))
 			if not self.bloom_netloc_vec.add(netloc):
-				spider.log("Spot new netloc: %s"%netloc, level=log.INFO)
+				spider.log("Spot new netloc: %s"%netloc, level=log.DEBUG)
 
 				server.rpush(url_queue_key, link)
 			else :
