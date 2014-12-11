@@ -20,7 +20,7 @@ USER_AGENT = 'WebModel (http://www.jaysonhwang.com)'
 # Enables scheduling storing requests queue in redis.
 SCHEDULER = "WebModel.scheduler.Scheduler"
 # Don't cleanup redis queues, allows to pause/resume crawls.
-SCHEDULER_PERSIST = True
+SCHEDULER_PERSIST = False
 
 # Schedule requests using a priority queue. (default)
 SCHEDULER_QUEUE_CLASS = 'WebModel.utils.scrapy_redis.queue.SpiderPriorityQueue'

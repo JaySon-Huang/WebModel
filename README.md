@@ -21,6 +21,21 @@ WebModel
 	2. 被拒绝抓取的网站URL、数量和占比。
 	3. 尝试使用分布式爬取(利用小组成员的机器形成小集群)
 
+### 
+#### 起始地址池
+[中国门户网站排行榜(2014-12-5)](http://top.chinaz.com/list.aspx?t=247)
+
+* [人民网](www.people.com.cn)
+* [新华网](www.xinhuanet.com)
+* [腾讯网](www.qq.com)
+* [网易](www.163.com)
+* [央视网](www.cntv.cn)
+* [凤凰网](www.ifeng.com)
+* [和讯网](www.hexun.com)
+* [新浪网](www.sina.com.cn)
+* [搜狐](www.sohu.com)
+* [东北网](www.dbw.cn)
+
 ## 环境
 * [Python 2.7.x](python.org)  
 * [Scrapy - 网络爬虫框架](scrapy.org)  
