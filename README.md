@@ -25,16 +25,16 @@ WebModel
 #### 起始地址池
 [中国门户网站排行榜(2014-12-5)](http://top.chinaz.com/list.aspx?t=247)
 
-* [人民网](www.people.com.cn)
-* [新华网](www.xinhuanet.com)
-* [腾讯网](www.qq.com)
-* [网易](www.163.com)
-* [央视网](www.cntv.cn)
-* [凤凰网](www.ifeng.com)
-* [和讯网](www.hexun.com)
-* [新浪网](www.sina.com.cn)
-* [搜狐](www.sohu.com)
-* [东北网](www.dbw.cn)
+* [人民网](http://www.people.com.cn)
+* [新华网](http://www.xinhuanet.com)
+* [腾讯网](http://www.qq.com)
+* [网易](http://www.163.com)
+* [央视网](http://www.cntv.cn)
+* [凤凰网](http://www.ifeng.com)
+* [和讯网](http://www.hexun.com)
+* [新浪网](http://www.sina.com.cn)
+* [搜狐](http://www.sohu.com)
+* [东北网](http://www.dbw.cn)
 
 ## 环境
 * [Python 2.7.x](python.org)  
