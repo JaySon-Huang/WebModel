@@ -7,6 +7,7 @@
 
 #python库
 import sqlite3
+import re
 from scrapy import log
 from urlparse import urlparse
 
@@ -33,10 +34,10 @@ class RedisPipeline(object):
 		self.server = server
 		# 用来判断是否重复出现
 		allowed = [
-			"people.com.cn",
-			"xinhuanet.com",
 			"qq.com",
 			"163.com",
+			"people.com.cn",
+			"xinhuanet.com",
 			"cntv.cn",
 			"ifeng.com",
 			"hexun.com",
@@ -47,6 +48,12 @@ class RedisPipeline(object):
 		self.bloom_domain_filter = BloomFilter(capacity=32)
 		for a in allowed:
 			self.bloom_domain_filter.add(a)
+		self.qzone_filter = re.compile(r"^http://.*\.qzone\.qq\.com")
+		self.wangyiblog_filter = re.compile(r"^http://.*\.blog\.163\.com")
+		self.hexunblog_filter = re.compile(r"^http://.*\.blog\.hexun\.com")
+		self.sohublog_filter = re.compile(r"http://.*\.blog\.sohu\.com")
+		self.sohui_filter = re.compile(r"http://.*\.i\.sohu\.com")
+
 		self.bloom_domain_vec = BloomFilter(capacity=1<<16, error_rate=0.001)
 		self.bloom_netloc_vec = BloomFilter(capacity=1<<16, error_rate=0.001)
 
@@ -97,16 +104,33 @@ class RedisPipeline(object):
 			self._initDomain(domain)
 
 		for link in item['links']:
+
+			# # qq 空间个性域名,过滤
+			# if self.qzone_filter.match(link):
+			# 	continue
+			
+			# # 网易博客个性域名,过滤
+			# if self.wangyiblog_filter.match(link):
+			# 	continue
+
+			# # 和讯blog,过滤
+			# if self.hexunblog_filter.match(link):
+			# 	continue
+
+			# # 搜狐blog、个人展示页,过滤
+			# if self.sohublog_filter.match(link) or self.sohui_filter.match(link):
+			# 	continue
+
 			link_domain, ret_type = domain_getter.get_domain(link)
 			# 判断域名是否和当前爬取域名D0相同
-			if link_domain == spider.CRAWLING_DOMAIN:
+			if link_domain == spider.CRWALING_DOMAIN:
 				# D0的size+1
 				self.server.hincrby(domains_key%link_domain, 'size', 1)
 				# 判断其netloc是否出现过
 				netloc = urlparse(link).netloc
 				if not self.bloom_netloc_vec.add(netloc):
 					# 未出现过,网页进入队列
-					self.server.rpush(url_queue_key, link)
+					self.server.rpush(url_queue_key, "http://"+netloc)
 			else:# - 不同,则判断域名是否已经出现过
 				if self.bloom_domain_vec.add(link_domain):
 					# 已出现过,对应的记录D1入度+1
@@ -114,100 +138,10 @@ class RedisPipeline(object):
 				else:
 					# 没出现过,则Domain中增加记录D1,D1记录入度初始化为1,出度初始化为0;D0出度+1
 					self._initDomain(link_domain)
-					self.server.hincrby(domains_key%domain, 'indegree')
+					self.server.hincrby(domains_key%domain, 'outdegree', 1)
 
 	def _initDomain(self, domain):
 		self.server.hset(domains_key%domain, 'indegree', 1)
 		self.server.hset(domains_key%domain, 'outdegree', 0)
 		self.server.hset(domains_key%domain, 'size', 1)
-
-	# 	self._updateCurPage(self.server, item, spider)
-
-	# 	newlinks, oldlinks = [], []
-	# 	for link in item['links']:
-	# 		domain, ret_type = domain_getter.get_domain(link)
-	# 		if ret_type == TYPE_IP:
-	# 			# 忽略IP
-	# 			continue
-	# 		if not self.bloom_domain_vec.add(domain) :
-	# 			# 返回False,bloomfilter判定未出现过
-	# 			newlinks.append( (link, domain, ret_type) )
-	# 		else :
-	# 			# 返回True,bloomfilter判定已经出现过
-	# 			oldlinks.append( (link, domain, ret_type) )
-
-	# 	#redis数据库
-	# 	self._updateOutLink(self.server, newlinks, oldlinks, spider)
-	# 	#sqlite3数据库
-	# 	# getCliInstance().updateInfo(item, newlinks, oldlinks)
-
-	# def _updateCurPage(self, server, item, spider):
-	# 	server.sadd(url_visited_key, item['url'])
-	# 	netloc = urlparse(item['url']).netloc
-	# 	domain, ret_type = domain_getter.get_domain(item['url'])
-	# 	try:
-	# 		self.bloom_domain_vec.add(domain)
-	# 		self.bloom_netloc_vec.add(netloc)
-	# 	except IndexError:
-	# 		# BloomFilter满了
-	# 		spider.log("BloomFilter is at the capacity.", level=log.ERROR)
-	# 	server.hincrby(domains_key%domain, 'outdegree', len(item['links']))
-
-	# 	i = int(server.hget(domains_key%domain, 'outdegree'))
-	# 	spider.log('outdegree of %s: %d'%(domain, i), level=log.INFO)
-
-	# def _updateOutLink(self, server, newlinks, oldlinks, spider):
-	# 	# 对该网页中所有链接涉及的记录进行更新
-	# 	# 外部判断未出现过的链接
-	# 	pipe = server.pipeline()
-	# 	for link, domain, ret_type in newlinks:
-	# 		if newlinks[:-3] in ('jpg', 'png', 'zip', 'rar', 'txt'):
-	# 			continue
-	# 		if server.exists(domains_key%domain):
-	# 			# spider.log(u"判断失误,%s曾出现"%domain, level=log.CRITICAL)
-	# 			continue
-	# 		pipe.hset(domains_key%domain, 'indegree', 1)
-	# 		pipe.hset(domains_key%domain, 'outdegree', 0)
-
-	# 		netloc = urlparse(link).netloc
-	# 		# spider.log('Netloc <%s> from <%s>'%(netloc, link))
-
-	# 		try:
-	# 			isAppeared = self.bloom_netloc_vec.add(netloc)
-	# 		except IndexError:
-	# 			# BloomFilter满了
-	# 			spider.log("BloomFilter is at the capacity.", level=log.ERROR)
-	# 			isAppeared = False
-
-	# 		if not isAppeared:
-	# 			# 去除端口号, 以‘.’分割
-	# 			parts = netloc.split(':')[0].split('.')
-	# 			if len(parts) <= 3:
-	# 				spider.log("Spot new netloc: %s"%netloc, level=log.DEBUG)
-	# 				pipe.rpush(url_queue_key, link)
-	# 			elif parts[-1] == 'cn' and len(parts) <= 4 :
-	# 				spider.log("Spot new netloc: %s"%netloc, level=log.DEBUG)
-	# 				pipe.rpush(url_queue_key, link)
-	# 			elif parts[0] == 'www' and len(parts) <= 4 :
-	# 				spider.log("Spot new netloc: %s"%netloc, level=log.DEBUG)
-	# 				pipe.rpush(url_queue_key, link)
-	# 			else:
-	# 				self._drop(link, spider, pipe, '%s seems is NOT new netloc'%netloc)
-	# 		else :
-	# 			# spider.log("不再爬取%s上的网站:"%netloc, level=log.DEBUG)
-	# 			self._drop(link, spider, pipe, None)
-	# 			pass
-	# 	pipe.execute()
-
-	# 	pipe = server.pipeline()
-	# 	# 外部判断出现过的链接
-	# 	for link, domain, ret_type in oldlinks:
-	# 		# 对对应的domain记录入度增加
-	# 		pipe.hincrby(domains_key%domain, 'indegree', 1)
-	# 	pipe.execute()
-
-	# def _drop(self, link, spider, pipe, reason):
-	# 	pipe.sadd(url_ignore_key, link)
-	# 	if reason:
-	# 		spider.log(reason, level=log.INFO)
 

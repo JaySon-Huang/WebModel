@@ -21,7 +21,16 @@ from WebModel.utils.rediskeys import url_queue_key, domains_key
 class WebModelSpider(RedisSpider):
 
 	name = 'webmodel'
-	CRWALING_DOMAIN = 'qq.com'
+	# CRWALING_DOMAIN = 'qq.com'
+	# CRWALING_DOMAIN = '163.com'
+	# CRWALING_DOMAIN = "people.com.cn"
+	# CRWALING_DOMAIN = "xinhuanet.com"
+	# CRWALING_DOMAIN = "cntv.cn"
+	# CRWALING_DOMAIN = "ifeng.com"
+	# CRWALING_DOMAIN = "hexun.com"
+	# CRWALING_DOMAIN = "sina.com.cn"
+	# CRWALING_DOMAIN = "sohu.com"
+	CRWALING_DOMAIN = "dbw.cn"
 	# allowed_domains = []
 	# start_urls = ['http://www.qq.com',]
 

@@ -40,7 +40,7 @@ ITEM_PIPELINES = {
 	'WebModel.pipelines.RedisPipeline':150,
 }
 # Specify the host and port to use when connecting to Redis (optional).
-REDIS_HOST = '125.216.247.234'
+REDIS_HOST = 'localhost'
 REDIS_PORT = 6379
 
 
