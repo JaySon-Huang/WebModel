@@ -1,1 +1,0 @@
-scrapy crawl webmodel --logfile=./crawl_163.log -L INFO -a begin="http://www.163.com"
