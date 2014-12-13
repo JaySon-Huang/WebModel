@@ -134,7 +134,8 @@ class RedisPipeline(object):
 					self.server.hincrby(related_domains_key%(spider.CRAWLING_DOMAIN,link_domain), 'indegree', 1)
 				else:
 					# 没出现过,则Domain中增加记录D1,D1记录入度初始化为1,出度初始化为0;D0出度+1
-					self._initGlobalDomain(link_domain)
+					if not self.server.exists(domains_key%domain):
+						self._initGlobalDomain(link_domain)
 					self.server.hincrby(domains_key%domain, 'outdegree', 1)
 
 					self._initRelateDomain(link_domain, spider)
