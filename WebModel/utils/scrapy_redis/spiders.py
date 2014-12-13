@@ -25,7 +25,7 @@ class RedisMixin(object):
 
     def next_request(self):
         """Returns a request to be scheduled or none."""
-        url = self.server.lpop(url_queue_key)
+        url = self.server.lpop(self.URL_QUEUE_KEY)
         if url:
             return self.make_requests_from_url(url)
 

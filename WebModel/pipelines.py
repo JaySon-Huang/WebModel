@@ -106,7 +106,7 @@ class RedisPipeline(object):
 		
 		domain, ret_type = domain_getter.get_domain(item['url'])
 		if not self.bloom_domain_vec.add(domain) \
-			and not self.server.exist(domains_key%link_domain):
+			and not self.server.exists(domains_key%link_domain):
 			self._initDomain(domain)
 
 		for link in item['links']:

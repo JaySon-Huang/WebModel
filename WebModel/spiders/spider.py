@@ -34,15 +34,14 @@ class WebModelSpider(RedisMixin, Spider):
 	# CRAWLING_DOMAIN = "dbw.cn"
 	CRAWLING_DOMAIN = None
 
-	def set_crawler(self, crawler, begin, *args, **kwargs):
-		Spider.set_crawler(crawler)
-		RedisMixin.setup_redis()
+	def set_crawler(self, crawler, *args, **kwargs):
+		super(WebModelSpider, self).set_crawler(crawler)
+		self.setup_redis()
 		print 'set_crawler is called'
 		# 初始爬取网址
-		spider.server.lpush(spider.URL_QUEUE_KEY, begin)
+		self.server.lpush(self.URL_QUEUE_KEY, self.BEGIN_URL)
 
-		spider.log("`set_crawler` Reading URLs from redis list '%s'" % spider.URL_QUEUE_KEY, level=log.INFO)
-		return spider
+		self.log("`set_crawler` Reading URLs from redis list '%s'" % self.URL_QUEUE_KEY, level=log.INFO)
 	
 	def __init__(self, begin="http://www.163.com"):
 		super(WebModelSpider, self).__init__()
@@ -53,6 +52,8 @@ class WebModelSpider(RedisMixin, Spider):
 		self.URL_VISITED_KEY = url_visited_key%self.CRAWLING_DOMAIN
 		self.BLOG_IGNORE_KEY = url_ignore_key%self.CRAWLING_DOMAIN
 		self.ROBOT_REFUSED_KEY = robots_refused_key%self.CRAWLING_DOMAIN
+		
+		self.BEGIN_URL = begin
 
 		print self.CRAWLING_DOMAIN,self.URL_QUEUE_KEY,self.URL_VISITED_KEY,self.BLOG_IGNORE_KEY,self.ROBOT_REFUSED_KEY
 
