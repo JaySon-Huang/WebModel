@@ -1,0 +1,1 @@
+scrapy crawl webmodel --logfile=./crawl_people.log -L INFO -a begin='http://www.people.com.cn'

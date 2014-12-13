@@ -37,7 +37,6 @@ class WebModelSpider(RedisMixin, Spider):
 	def set_crawler(self, crawler, *args, **kwargs):
 		super(WebModelSpider, self).set_crawler(crawler)
 		self.setup_redis()
-		print 'set_crawler is called'
 		# 初始爬取网址
 		self.server.lpush(self.URL_QUEUE_KEY, self.BEGIN_URL)
 
@@ -55,7 +54,7 @@ class WebModelSpider(RedisMixin, Spider):
 		
 		self.BEGIN_URL = begin
 
-		print self.CRAWLING_DOMAIN,self.URL_QUEUE_KEY,self.URL_VISITED_KEY,self.BLOG_IGNORE_KEY,self.ROBOT_REFUSED_KEY
+		# print self.CRAWLING_DOMAIN,self.URL_QUEUE_KEY,self.URL_VISITED_KEY,self.BLOG_IGNORE_KEY,self.ROBOT_REFUSED_KEY
 
 		# 用来解析url获取域名
 		# for url in WebModelSpider.start_urls:

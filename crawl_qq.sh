@@ -1,1 +1,1 @@
-scrapy crawl webmodel --logfile=./crawling.log -L INFO -a begin="http://www.qq.com"
+scrapy crawl webmodel --logfile=./crawl_qq.log -L INFO -a begin='http://www.qq.com'

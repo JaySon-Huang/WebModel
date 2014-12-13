@@ -1,0 +1,1 @@
+scrapy crawl webmodel --logfile=./crawl_sohu.log -L INFO -a begin='http://www.sohu.com'

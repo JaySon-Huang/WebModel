@@ -1,0 +1,1 @@
+scrapy crawl webmodel --logfile=./crawl_dbw.log -L INFO -a begin='http://www.dbw.cn'

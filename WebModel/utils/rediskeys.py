@@ -13,6 +13,7 @@ url_visited_key = 'webmodel:%s:urls_visited'
 # 集合
 url_ignore_key = 'webmodel:%s:urls_ignore'
 robots_refused_key = 'webmodel:%s:refused'
+related_domains_key = 'webmodel:%s:domains:%s'
 
 domains_key = 'webmodel:domains:%s'
 

@@ -24,7 +24,7 @@ from pybloom import BloomFilter
 from WebModel.utils.publicsuffix import domain_getter, TYPE_DOMAIN, TYPE_IP
 # scrapy-redis 的pipeline
 import WebModel.utils.scrapy_redis.connection as connection
-from WebModel.utils.rediskeys import domains_key
+from WebModel.utils.rediskeys import domains_key, related_domains_key
 
 class RedisPipeline(object):
 	"""Pushes serialized item into a redis list/queue"""
@@ -105,9 +105,10 @@ class RedisPipeline(object):
 		self.server.rpush(spider.URL_VISITED_KEY, item['url'])
 		
 		domain, ret_type = domain_getter.get_domain(item['url'])
-		if not self.bloom_domain_vec.add(domain) \
-			and not self.server.exists(domains_key%link_domain):
-			self._initDomain(domain)
+		if not self.bloom_domain_vec.add(domain):
+			self._initRelateDomain(domain, spider)
+			if not self.server.exists(domains_key%domain):
+				self._initGlobalDomain(domain)
 
 		for link in item['links']:
 
@@ -120,28 +121,41 @@ class RedisPipeline(object):
 			if link_domain == spider.CRAWLING_DOMAIN:
 				# D0的size+1
 				self.server.hincrby(domains_key%link_domain, 'size', 1)
+				self.server.hincrby(related_domains_key%(spider.CRAWLING_DOMAIN,domain), 'size', 1)
 				# 判断其netloc是否出现过
 				netloc = urlparse(link).netloc
 				if not self.bloom_netloc_vec.add(netloc):
 					# 未出现过,网页进入队列
 					self.server.rpush(spider.URL_QUEUE_KEY, "http://"+netloc)
-			else:# - 不同,则判断域名是否已经出现过
+			else:# 不同,则判断域名是否已经出现过
 				if self.bloom_domain_vec.add(link_domain):
 					# 已出现过,对应的记录D1入度+1
 					self.server.hincrby(domains_key%link_domain, 'indegree', 1)
+					self.server.hincrby(related_domains_key%(spider.CRAWLING_DOMAIN,link_domain), 'indegree', 1)
 				else:
 					# 没出现过,则Domain中增加记录D1,D1记录入度初始化为1,出度初始化为0;D0出度+1
-					self._initDomain(link_domain)
+					self._initGlobalDomain(link_domain)
 					self.server.hincrby(domains_key%domain, 'outdegree', 1)
+
+					self._initRelateDomain(link_domain, spider)
+					self.server.hincrby(related_domains_key%(spider.CRAWLING_DOMAIN,link_domain), 'outdegree', 1)
 
 		for link in item['refused_links']:
 			spider.log(link+" refuse by robots.txt", level=log.INFO)
 			self.server.rpush(spider.ROBOT_REFUSED_KEY, link)
 
-	def _initDomain(self, domain):
-		self.server.hset(domains_key%domain, 'indegree', 1)
-		self.server.hset(domains_key%domain, 'outdegree', 0)
-		self.server.hset(domains_key%domain, 'size', 1)
+	def _initGlobalDomain(self, domain):
+		key = domains_key%domain
+		self._raw_init_domain(key)
+
+	def _initRelateDomain(self, domain, spider):
+		key = related_domains_key%(spider.CRAWLING_DOMAIN, domain)
+		self._raw_init_domain(key)
+
+	def _raw_init_domain(self, key):
+		self.server.hset(key, 'indegree', 0)
+		self.server.hset(key, 'outdegree', 0)
+		self.server.hset(key, 'size', 1)
 
 	def _isBlogLink(self,link):
 		# qq 空间个性域名,过滤

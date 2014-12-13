@@ -10,5 +10,7 @@ pip install scrapy
 
 	lpush webmodel:urls_to_visit http://www.qq.com http://www.hexun.com http://www.sohu.com http://www.people.com.cn http://xinhuanet.com http://163.com http://www.cntv.com http://www.ifeng.com http://www.sina.com.cn 
 	
+pip install redis
+
 from pybloom import BloomFilter as BF
 from pprint import pprint as pp

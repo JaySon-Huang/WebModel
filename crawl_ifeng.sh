@@ -1,0 +1,1 @@
+scrapy crawl webmodel --logfile=./crawl_ifeng.log -L INFO -a begin='http://www.ifeng.com'
