@@ -1,7 +1,10 @@
-from WebModel.utils.scrapy_redis.spiders import RedisSpider
+from scrapy.spider import Spider
 
-class MySpider(RedisSpider):
+class MySpider(Spider):
     name = 'myspider'
+
+    def __init__(self, first=None):
+        print 'initing with first:',first
 
     def parse(self, response):
 		print response.status

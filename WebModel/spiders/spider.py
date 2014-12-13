@@ -2,6 +2,7 @@
 
 from scrapy import log
 from scrapy.selector import Selector
+from scrapy.spider import Spider
 
 from urlparse import urlparse
 
@@ -14,28 +15,47 @@ from WebModel.utils.publicsuffix import domain_getter, TYPE_DOMAIN, TYPE_IP
 # 数据库操作 
 from WebModel.database.databasehelper import getCliInstance
 # scrapy-redis库
-from WebModel.utils.scrapy_redis.spiders import RedisSpider
+from WebModel.utils.scrapy_redis.spiders import RedisMixin
 # 爬虫从redis的 `url_queue_key`、`domains_key` 键中获取需要爬取的url
-from WebModel.utils.rediskeys import url_queue_key, domains_key
+from WebModel.utils.rediskeys import url_queue_key, domains_key, robots_refused_key, url_ignore_key, url_visited_key
 
-class WebModelSpider(RedisSpider):
+class WebModelSpider(RedisMixin, Spider):
 
 	name = 'webmodel'
-	# CRWALING_DOMAIN = 'qq.com'
-	# CRWALING_DOMAIN = '163.com'
-	# CRWALING_DOMAIN = "people.com.cn"
-	# CRWALING_DOMAIN = "xinhuanet.com"
-	# CRWALING_DOMAIN = "cntv.cn"
-	# CRWALING_DOMAIN = "ifeng.com"
-	# CRWALING_DOMAIN = "hexun.com"
-	# CRWALING_DOMAIN = "sina.com.cn"
-	# CRWALING_DOMAIN = "sohu.com"
-	CRWALING_DOMAIN = "dbw.cn"
-	# allowed_domains = []
-	# start_urls = ['http://www.qq.com',]
+	# CRAWLING_DOMAIN = 'qq.com'
+	# CRAWLING_DOMAIN = '163.com'
+	# CRAWLING_DOMAIN = "people.com.cn"
+	# CRAWLING_DOMAIN = "xinhuanet.com"
+	# CRAWLING_DOMAIN = "cntv.cn"
+	# CRAWLING_DOMAIN = "ifeng.com"
+	# CRAWLING_DOMAIN = "hexun.com"
+	# CRAWLING_DOMAIN = "sina.com.cn"
+	# CRAWLING_DOMAIN = "sohu.com"
+	# CRAWLING_DOMAIN = "dbw.cn"
+	CRAWLING_DOMAIN = None
 
-	def __init__(self):
+	def set_crawler(self, crawler, begin, *args, **kwargs):
+		Spider.set_crawler(crawler)
+		RedisMixin.setup_redis()
+		print 'set_crawler is called'
+		# 初始爬取网址
+		spider.server.lpush(spider.URL_QUEUE_KEY, begin)
+
+		spider.log("`set_crawler` Reading URLs from redis list '%s'" % spider.URL_QUEUE_KEY, level=log.INFO)
+		return spider
+	
+	def __init__(self, begin="http://www.163.com"):
 		super(WebModelSpider, self).__init__()
+		print 'initing spider with begin:',begin
+		# 根据begin参数修改redis数据库中存储键值
+		self.CRAWLING_DOMAIN = domain_getter.get_domain(begin)[0]
+		self.URL_QUEUE_KEY = url_queue_key%self.CRAWLING_DOMAIN
+		self.URL_VISITED_KEY = url_visited_key%self.CRAWLING_DOMAIN
+		self.BLOG_IGNORE_KEY = url_ignore_key%self.CRAWLING_DOMAIN
+		self.ROBOT_REFUSED_KEY = robots_refused_key%self.CRAWLING_DOMAIN
+
+		print self.CRAWLING_DOMAIN,self.URL_QUEUE_KEY,self.URL_VISITED_KEY,self.BLOG_IGNORE_KEY,self.ROBOT_REFUSED_KEY
+
 		# 用来解析url获取域名
 		# for url in WebModelSpider.start_urls:
 		# 	import sqlite3
@@ -72,6 +92,8 @@ class WebModelSpider(RedisSpider):
 		except IndexError:
 			pageItem['title'] = '(crwal title failed)'
 		pageItem['links'] = []
+		pageItem['refused_links'] = []
+
 		# 把所有<a>标签的超链接提取出来
 		for link in hxs.xpath('//a/@href').extract() :
 			# 判断超链接内容是否为一个合法网址/相对网址
@@ -83,7 +105,9 @@ class WebModelSpider(RedisSpider):
 
 					#Schedule从redis队列中获取, 不在这里发起请求
 					# yield Request(link, callback=self.parse)
-			
+				else:
+					pageItem['refused_links'].append(link)
+
 			elif link.startswith('/') :
 				# 相对定位,把网址补全,再yield请求
 				link = "http://"+ netloc + link
@@ -94,6 +118,8 @@ class WebModelSpider(RedisSpider):
 
 					#Schedule从redis队列中获取, 不在这里发起请求
 					# yield Request(link, callback=self.parse)
+				else:
+					pageItem['refused_links'].append(link)
 			else :
 				# 不符合以上两种,一般为javascript函数
 				# msg = '%s : not a url'%(link,)

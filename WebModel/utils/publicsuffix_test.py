@@ -11,7 +11,7 @@ domainParser = PublicSuffixList()
 # print domainParser.get_public_suffix("jaysonhwang.sinaapp.com/web/1")
 
 print domainParser.get_domain("http://192.168.0.100:8080/web")
-print domainParser.get_domain("http://jaysonhwang.com")
+print domainParser.get_domain("http://www.qq.com")
 allow = [
     "http://www.people.com.cn",
     "http://www.xinhuanet.com",

@@ -5,7 +5,6 @@ from scrapy.exceptions import DontCloseSpider
 from scrapy.spider import Spider
 
 import WebModel.utils.scrapy_redis.connection as connection
-from WebModel.utils.rediskeys import url_queue_key
 
 class RedisMixin(object):
     """Mixin class to implement reading urls from a redis queue."""
@@ -59,7 +58,7 @@ class RedisSpider(RedisMixin, Spider):
         try:
             spider = super(RedisSpider, cls).from_crawler(crawler, *args, **kwargs)
         except AttributeError:
-            spider = cls()
+            spider = super(RedisSpider, cls)
             super(RedisSpider ,spider).set_crawler(crawler)
         spider.setup_redis()
         # load(spider)

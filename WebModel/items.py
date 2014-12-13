@@ -15,6 +15,8 @@ class PageItem(scrapy.Item):
 	title = scrapy.Field()
 	# 其他url连接, len(links)添加到对于domain的出度信息
 	links = scrapy.Field()
+	# 被robots.txt拒绝抓取的links
+	refused_links = scrapy.Field()
 
 class RulesetItem(scrapy.Item):
 	# 对应的domain

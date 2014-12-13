@@ -7,12 +7,15 @@ from scrapy import log
 # # Redis中存储的Key, 类型为 哈希表
 # _REDIS_RULESETS_KEY = '%(spider)s:rulesets'
 
-url_queue_key = 'webmodel:urls_to_visit'
+url_queue_key = 'webmodel:%s:urls_to_visit'
 # 集合
-url_visited_key = 'webmodel:urls_visited'
+url_visited_key = 'webmodel:%s:urls_visited'
 # 集合
-url_ignore_key = 'webmodel:urls_ignore'
+url_ignore_key = 'webmodel:%s:urls_ignore'
+robots_refused_key = 'webmodel:%s:refused'
+
 domains_key = 'webmodel:domains:%s'
+
 
 # url_queue_key = 'tmp:urls_to_visit'
 # url_visited_key = 'tmp:urls_visited'

@@ -24,7 +24,7 @@ from pybloom import BloomFilter
 from WebModel.utils.publicsuffix import domain_getter, TYPE_DOMAIN, TYPE_IP
 # scrapy-redis 的pipeline
 import WebModel.utils.scrapy_redis.connection as connection
-from WebModel.utils.rediskeys import url_queue_key, domains_key, url_ignore_key, url_visited_key
+from WebModel.utils.rediskeys import domains_key
 
 class RedisPipeline(object):
 	"""Pushes serialized item into a redis list/queue"""
@@ -48,6 +48,8 @@ class RedisPipeline(object):
 		self.bloom_domain_filter = BloomFilter(capacity=32)
 		for a in allowed:
 			self.bloom_domain_filter.add(a)
+
+		# 正则过滤, 一些博客
 		self.qzone_filter = re.compile(r"^http://.*\.qzone\.qq\.com")
 		self.wangyiblog_filter = re.compile(r"^http://.*\.blog\.163\.com")
 		self.hexunblog_filter = re.compile(r"^http://.*\.blog\.hexun\.com")
@@ -99,38 +101,30 @@ class RedisPipeline(object):
 				spider.log("爬取到域名的robots规则: "+item['domain'], level=log.INFO)
 
 	def _process_page(self, item, spider):
+		# 记录爬取过此网址
+		self.server.rpush(spider.URL_VISITED_KEY, item['url'])
+		
 		domain, ret_type = domain_getter.get_domain(item['url'])
-		if not self.bloom_domain_vec.add(domain):
+		if not self.bloom_domain_vec.add(domain) \
+			and not self.server.exist(domains_key%link_domain):
 			self._initDomain(domain)
 
 		for link in item['links']:
 
-			# # qq 空间个性域名,过滤
-			# if self.qzone_filter.match(link):
-			# 	continue
-			
-			# # 网易博客个性域名,过滤
-			# if self.wangyiblog_filter.match(link):
-			# 	continue
-
-			# # 和讯blog,过滤
-			# if self.hexunblog_filter.match(link):
-			# 	continue
-
-			# # 搜狐blog、个人展示页,过滤
-			# if self.sohublog_filter.match(link) or self.sohui_filter.match(link):
-			# 	continue
+			if self._isBlogLink(link):
+				self.server.rpush(spider.BLOG_IGNORE_KEY, link)
+				continue
 
 			link_domain, ret_type = domain_getter.get_domain(link)
 			# 判断域名是否和当前爬取域名D0相同
-			if link_domain == spider.CRWALING_DOMAIN:
+			if link_domain == spider.CRAWLING_DOMAIN:
 				# D0的size+1
 				self.server.hincrby(domains_key%link_domain, 'size', 1)
 				# 判断其netloc是否出现过
 				netloc = urlparse(link).netloc
 				if not self.bloom_netloc_vec.add(netloc):
 					# 未出现过,网页进入队列
-					self.server.rpush(url_queue_key, "http://"+netloc)
+					self.server.rpush(spider.URL_QUEUE_KEY, "http://"+netloc)
 			else:# - 不同,则判断域名是否已经出现过
 				if self.bloom_domain_vec.add(link_domain):
 					# 已出现过,对应的记录D1入度+1
@@ -140,8 +134,30 @@ class RedisPipeline(object):
 					self._initDomain(link_domain)
 					self.server.hincrby(domains_key%domain, 'outdegree', 1)
 
+		for link in item['refused_links']:
+			spider.log(link+" refuse by robots.txt", level=log.INFO)
+			self.server.rpush(spider.ROBOT_REFUSED_KEY, link)
+
 	def _initDomain(self, domain):
 		self.server.hset(domains_key%domain, 'indegree', 1)
 		self.server.hset(domains_key%domain, 'outdegree', 0)
 		self.server.hset(domains_key%domain, 'size', 1)
 
+	def _isBlogLink(self,link):
+		# qq 空间个性域名,过滤
+		if self.qzone_filter.match(link):
+			return True
+		
+		# 网易博客个性域名,过滤
+		elif self.wangyiblog_filter.match(link):
+			return True
+
+		# 和讯blog,过滤
+		elif self.hexunblog_filter.match(link):
+			return True
+
+		# 搜狐blog、个人展示页,过滤
+		elif self.sohublog_filter.match(link) or self.sohui_filter.match(link):
+			return True
+
+		return False
