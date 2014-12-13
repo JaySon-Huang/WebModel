@@ -4,7 +4,7 @@ websites = {
     'xinhuanet':"http://www.xinhuanet.com",
     'qq'    :"http://www.qq.com",
     '163'   :"http://www.163.com",
-    'xinhuanet':"http://www.cntv.cn",
+    'cntv'  :"http://www.cntv.cn",
     'ifeng' :"http://www.ifeng.com",
     'hexun' :"http://www.hexun.com",
     'sina'  :"http://www.sina.com.cn",
