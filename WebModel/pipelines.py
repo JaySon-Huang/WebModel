@@ -53,8 +53,16 @@ class RedisPipeline(object):
 		self.qzone_filter = re.compile(r"^http://.*\.qzone\.qq\.com")
 		self.wangyiblog_filter = re.compile(r"^http://.*\.blog\.163\.com")
 		self.hexunblog_filter = re.compile(r"^http://.*\.blog\.hexun\.com")
-		self.sohublog_filter = re.compile(r"http://.*\.blog\.sohu\.com")
-		self.sohui_filter = re.compile(r"http://.*\.i\.sohu\.com")
+		self.sohublog_filter = re.compile(r"^http://.*\.blog\.sohu\.com")
+		self.sohui_filter = re.compile(r"^http://.*\.i\.sohu\.com")
+		self.sinahouse_filter = re.compile(r"^http://.*\.house\.sina\.com\.cn")
+		self.sinaershoufang_filter = re.compile(r"^http://.*\.esf\.sina\.com\.cn")
+		self.sinajiaju_filter = re.compile(r"^http://.*\.jiaju\.sina\.com\.cn")
+		self.sinaauto_filter = re.compile(r"^http://.*\.auto\.sina\.com\.cn")
+		self.sinafood_filter = re.compile(r"^http://food\..*\.sina\.com\.cn")
+		self.sinatravel_filter = re.compile(r"^http://.*\.travel\.sina\.com\.cn")
+		self.sinaslider_filter = re.compile(r"^http://slide\..*\.sina\.com\.cn")
+		self.sohuauto_filter = re.compile(r"http://.*\.auto\.sohu\.com")
 
 		self.bloom_domain_vec = BloomFilter(capacity=1<<16, error_rate=0.001)
 		self.bloom_netloc_vec = BloomFilter(capacity=1<<16, error_rate=0.001)
@@ -102,7 +110,7 @@ class RedisPipeline(object):
 
 	def _process_page(self, item, spider):
 		# 记录爬取过此网址
-		self.server.rpush(spider.URL_VISITED_KEY, item['url'])
+		self.server.sadd(spider.URL_VISITED_KEY, item['url'])
 		
 		domain, ret_type = domain_getter.get_domain(item['url'])
 		if not self.bloom_domain_vec.add(domain):
@@ -111,10 +119,6 @@ class RedisPipeline(object):
 				self._initGlobalDomain(domain)
 
 		for link in item['links']:
-
-			if self._isBlogLink(link):
-				self.server.rpush(spider.BLOG_IGNORE_KEY, link)
-				continue
 
 			link_domain, ret_type = domain_getter.get_domain(link)
 			# 判断域名是否和当前爬取域名D0相同
@@ -125,8 +129,12 @@ class RedisPipeline(object):
 				# 判断其netloc是否出现过
 				netloc = urlparse(link).netloc
 				if not self.bloom_netloc_vec.add(netloc):
-					# 未出现过,网页进入队列
-					self.server.rpush(spider.URL_QUEUE_KEY, "http://"+netloc)
+					if self._isBlogLink(link):
+						# 在过滤名单内,直接跳过
+						self.server.sadd(spider.BLOG_IGNORE_KEY, link)
+					else:
+						# 未出现过,网页进入队列
+						self.server.rpush(spider.URL_QUEUE_KEY, "http://"+netloc)
 			else:# 不同,则判断域名是否已经出现过
 				if self.bloom_domain_vec.add(link_domain):
 					# 已出现过,对应的记录D1入度+1
@@ -143,7 +151,7 @@ class RedisPipeline(object):
 
 		for link in item['refused_links']:
 			spider.log(link+" refuse by robots.txt", level=log.INFO)
-			self.server.rpush(spider.ROBOT_REFUSED_KEY, link)
+			self.server.sadd(spider.ROBOT_REFUSED_KEY, link)
 
 	def _initGlobalDomain(self, domain):
 		key = domains_key%domain
@@ -173,6 +181,24 @@ class RedisPipeline(object):
 
 		# 搜狐blog、个人展示页,过滤
 		elif self.sohublog_filter.match(link) or self.sohui_filter.match(link):
+			return True
+
+		# 新浪房地产,过滤
+		elif self.sinahouse_filter.match(link):
+			return True
+		# 新浪二手房,过滤
+		elif self.sinaershoufang_filter.match(link):
+			return True
+		# 新浪家居
+		elif self.sinajiaju_filter.match(link):
+			return True
+		# 新浪汽车
+		elif self.sinaauto_filter.match(link):
+			return True
+		#新浪美食
+		elif self.sinafood_filter.match(link):
+			return True
+		elif self.sinatravel_filter.match(link):
 			return True
 
 		return False
