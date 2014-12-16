@@ -37,8 +37,9 @@ class WebModelSpider(RedisMixin, Spider):
 	def set_crawler(self, crawler, *args, **kwargs):
 		super(WebModelSpider, self).set_crawler(crawler)
 		self.setup_redis()
-		# 初始爬取网址
-		self.server.lpush(self.URL_QUEUE_KEY, self.BEGIN_URL)
+		if not self.server.exists(self.URL_QUEUE_KEY):
+			# 初始爬取网址
+			self.server.lpush(self.URL_QUEUE_KEY, self.BEGIN_URL)
 
 		self.log("`set_crawler` Reading URLs from redis list '%s'" % self.URL_QUEUE_KEY, level=log.INFO)
 	
@@ -143,27 +144,36 @@ class WebModelSpider(RedisMixin, Spider):
 		ruleset = self.server.hget(domains_key%domain, 'ruleset')
 		#sqlite3
 		# exist, ruleset = getCliInstance().robotsrulesetOfDomain(domain)
+		robotsURL = "http://www."+domain+"/robots.txt"
 		if not exist:
 			# 从网络读取robots.txt文件
-			robotsURL = "http://www."+domain+"/robots.txt"
 			self.log("fetching robots.txt from "+robotsURL, level=log.INFO)
 			if robotsparser.fetch(robotsURL, timeout=5):
 				ruleset = str(robotsparser)
 				self.log("Successfully parse "+robotsURL, level=log.INFO)
 			else:
-				ruleset = ''
+				ruleset = '(nil)'
 				self.log("robots.txt NOT found.")
 			# 标记让pipeline更新数据库内容
 			rulesetItem['update'] = True
 		else :
-			self.log("resuming robots.txt of %s from database."%(domain), level=log.INFO)
-			if ruleset:
+			if not ruleset:
 				# 重新解析robots.txt
+				if robotsparser.fetch(robotsURL, timeout=5):
+					ruleset = str(robotsparser)
+					self.log("Successfully parse "+robotsURL, level=log.INFO)
+				else:
+					ruleset = '(nil)'
+					self.log("robots.txt NOT found.")
+				rulesetItem['update'] = True
+			elif ruleset != '(nil)':
+				self.log("resume robots.txt of %s from database."%(domain), level=log.INFO)
 				robotsparser.parse(ruleset)
+				rulesetItem['update'] = False
 			else:
 				robotsparser = None
+				rulesetItem['update'] = True
 			# 标记让pipeline不处理这个item
-			rulesetItem['update'] = False
 
 		rulesetItem['domain'] = domain
 		rulesetItem['ruleset'] = ruleset

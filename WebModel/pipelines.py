@@ -53,6 +53,8 @@ class RedisPipeline(object):
 		self.qzone_filter = re.compile(r"^http://.*\.qzone\.qq\.com")
 		self.wangyiblog_filter = re.compile(r"^http://.*\.blog\.163\.com")
 		self.hexunblog_filter = re.compile(r"^http://.*\.blog\.hexun\.com")
+		self.ifengauto_filter = re.compile(r'^http://.*\.auto\.ifeng\.com')
+		self.ifenghoush_filter = re.compile(r'^http://.*\.house\.ifeng\.com')
 		self.sohublog_filter = re.compile(r"^http://.*\.blog\.sohu\.com")
 		self.sohui_filter = re.compile(r"^http://.*\.i\.sohu\.com")
 		self.sinahouse_filter = re.compile(r"^http://.*\.house\.sina\.com\.cn")
@@ -62,7 +64,9 @@ class RedisPipeline(object):
 		self.sinafood_filter = re.compile(r"^http://food\..*\.sina\.com\.cn")
 		self.sinatravel_filter = re.compile(r"^http://.*\.travel\.sina\.com\.cn")
 		self.sinaslider_filter = re.compile(r"^http://slide\..*\.sina\.com\.cn")
-		self.sohuauto_filter = re.compile(r"http://.*\.auto\.sohu\.com")
+		self.sohuauto_filter = re.compile(r"^http://.*\.auto\.sohu\.com")
+
+		self.allauto_filter = re.compile(r"^http://.*\.auto\..*\.com")
 
 		self.bloom_domain_vec = BloomFilter(capacity=1<<16, error_rate=0.001)
 		self.bloom_netloc_vec = BloomFilter(capacity=1<<16, error_rate=0.001)
@@ -109,12 +113,15 @@ class RedisPipeline(object):
 				spider.log("爬取到域名的robots规则: "+item['domain'], level=log.INFO)
 
 	def _process_page(self, item, spider):
+		cnt = {'filte':0,'enqueue':0,'refuse':len(item['refused_links']),'other_link':0}
 		# 记录爬取过此网址
 		self.server.sadd(spider.URL_VISITED_KEY, item['url'])
 		
 		domain, ret_type = domain_getter.get_domain(item['url'])
+		# 记录域名的bloom filter中未出现过此域名
 		if not self.bloom_domain_vec.add(domain):
 			self._initRelateDomain(domain, spider)
+			# redis数据库总表中不存在这个域名
 			if not self.server.exists(domains_key%domain):
 				self._initGlobalDomain(domain)
 
@@ -132,10 +139,13 @@ class RedisPipeline(object):
 					if self._isBlogLink(link):
 						# 在过滤名单内,直接跳过
 						self.server.sadd(spider.BLOG_IGNORE_KEY, link)
+						cnt['filte'] += 1
 					else:
 						# 未出现过,网页进入队列
 						self.server.rpush(spider.URL_QUEUE_KEY, "http://"+netloc)
+						cnt['enqueue'] += 1
 			else:# 不同,则判断域名是否已经出现过
+				cnt['other_link'] += 1
 				if self.bloom_domain_vec.add(link_domain):
 					# 已出现过,对应的记录D1入度+1
 					self.server.hincrby(domains_key%link_domain, 'indegree', 1)
@@ -152,6 +162,8 @@ class RedisPipeline(object):
 		for link in item['refused_links']:
 			spider.log(link+" refuse by robots.txt", level=log.INFO)
 			self.server.sadd(spider.ROBOT_REFUSED_KEY, link)
+
+		spider.log('%s from %s'%(str(cnt), item['url']), level=log.INFO)
 
 	def _initGlobalDomain(self, domain):
 		key = domains_key%domain
@@ -200,5 +212,10 @@ class RedisPipeline(object):
 			return True
 		elif self.sinatravel_filter.match(link):
 			return True
-
+		elif self.ifengauto_filter.match(link):
+			return True
+		elif self.ifenghoush_filter.match(link):
+			return True
+		elif self.allauto_filter.match(link):
+			return True
 		return False
